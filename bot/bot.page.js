@@ -6,12 +6,12 @@
   if (!g?.controls) throw new Error('__game not ready');
 
   const SLOT_KEYS = ['Mouse0', 'Mouse2', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyR', 'Digit5'];
-  // Supported classes: necromancer (default paths) and shaman (SHAMAN.md, per-class branches below).
-  const CLS = g.char.ch.cls, SHAMAN = CLS === 'shaman';
+  // Supported classes: necromancer (default paths), shaman (SHAMAN.md) and reaper (REAPER.md), per-class branches below.
+  const CLS = g.char.ch.cls, SHAMAN = CLS === 'shaman', REAPER = CLS === 'reaper', PETLESS = SHAMAN || REAPER;
 
   // Adaptive memory (this browser only): zone stats, caution, learned models, A/B knobs.
   // Per class: the shaman's learned dps ratio, margin and strategy stats must not overwrite the necro's.
-  const AD_KEY = SHAMAN ? 'ombreval-bot-adapt-shaman' : 'ombreval-bot-adapt';
+  const AD_KEY = SHAMAN ? 'ombreval-bot-adapt-shaman' : REAPER ? 'ombreval-bot-adapt-reaper' : 'ombreval-bot-adapt';
   const ad = (() => { try { return JSON.parse(localStorage.getItem(AD_KEY)) ?? {}; } catch { return {}; } })();
   ad.zones ??= {}; ad.caution ??= 0; ad.deaths ??= []; ad.calmSince ??= Date.now();
   ad.enemy ??= {}; ad.dpsRatio ??= 1; ad.dpsN ??= 0; ad.margin ??= 1.5; ad.pull ??= {}; ad.strat ??= {};
@@ -30,7 +30,7 @@
   // Means and rates stay as priors; fresh fights then outweigh them within minutes.
   const gameVer = [...document.scripts].map(x => x.src).find(u => /assets\/index/.test(u)) ?? '';
   if (gameVer && ad.gameVer && ad.gameVer !== gameVer) {
-    for (const z of Object.values(ad.zones)) for (const k of ['xp', 'ms', 'deaths', 'kills', 'gold', 'runs']) if (z[k]) z[k] *= 0.1;
+    for (const z of Object.values(ad.zones)) for (const b of [z, ...Object.values(z.lv ?? {})]) for (const k of ['xp', 'ms', 'deaths', 'kills', 'gold', 'runs']) if (b[k]) b[k] *= 0.1;
     for (const e of Object.values(ad.enemy)) e.n = Math.min(e.n, 2);
     for (const e of Object.values(ad.pull)) if (e) for (const k of ['xp', 'ms', 'n']) if (e[k]) e[k] *= 0.1;
     Object.assign(ad, { leash: {}, reach: {}, kmargin: {}, spots: [], avoid: {}, recentDeaths: [], deaths: [], caution: 0, dpsN: Math.min(ad.dpsN, 3), deathN: Math.min(ad.deathN ?? 0, 2) });
@@ -38,7 +38,15 @@
   }
   ad.gameVer = gameVer;
   const saveAd = () => { try { localStorage.setItem(AD_KEY, JSON.stringify(ad)); } catch {} };
-  const zoneStat = name => (ad.zones[name] ??= { xp: 0, ms: 0, deaths: 0 });
+  // Arm stats per character level (ad.zones[name].lv[level]): monster xp falls with the level gap and harder arms unlock,
+  // so a mean measured 6 levels ago must not keep winning. Old flat stats move once to a bucket 4 levels below ours.
+  // TODO(ceiling): the age of pre-bucket stats is unknown; 4 levels is a guess they shrink from.
+  const STAT_KEYS = ['xp', 'ms', 'deaths', 'kills', 'gold', 'runs'];
+  for (const z of Object.values(ad.zones)) if (!z.lv) {
+    const b = {}; for (const k of STAT_KEYS) if (z[k]) { b[k] = z[k]; delete z[k]; }
+    z.lv = b.ms ? { [Math.max(1, g.level - 4)]: { xp: 0, ms: 0, deaths: 0, ...b } } : {};
+  }
+  const zoneStat = name => ((ad.zones[name] ??= { lv: {} }).lv ??= {})[g.level] ??= { xp: 0, ms: 0, deaths: 0 };
   // Cheap knobs tuned by A/B runs (variant B active during its half of a run).
   const KNOBS = { potion: { def: 0.4, step: 0.08 }, flee: { def: 0.25, step: 0.06 }, reserve: { def: 1, step: 0.3 } };
   const knob = k => ad.ab.run?.k === k && ad.ab.run.side === 'B' ? ad.ab.run.val : ad.ab.best[k] ?? KNOBS[k].def;
@@ -85,8 +93,17 @@
       boarcharge: { dmgPct: 400, radius: 1.2, range: 16, castSec: 0.55, cost: 0 },
       mammoth: { dmgPct: 800, radius: 7, castSec: 0.9, cost: 0 },
       primalcall: { dmgPct: 600, radius: 3, range: 14, castSec: 0.65, cost: 0 },
+      // Reaper (reaper_skills.json, level 12); reap/harvest casts scale with aps, see castSec. cd in s.
+      reap: { dmgPct: 175, splashPct: 175, radius: 4.6, inner: 1.4, range: 4.6, castSec: 0.67, cost: 0 },
+      harvest: { dmgPct: 260, splashPct: 260, radius: 4.5, range: 4.5, castSec: 0.64, cost: 22 },
+      souldash: { dmgPct: 550, splashPct: 550, radius: 0.95, range: 10, minRange: 4, castSec: 0.31, cd: 9 },
+      doom: { dmgPct: 500, splashPct: 500, radius: 4, range: 14, castSec: 0.5, cd: 12 },
+      knell: { dmgPct: 600, splashPct: 600, radius: 6.5, castSec: 0.62, cd: 15 },
+      wraithform: { dmgPct: 500, splashPct: 500, radius: 7, castSec: 0.45, cd: 24, duration: 7 },
+      requiem: { dmgPct: 2500, splashPct: 2500, radius: 9, castSec: 2.22, cd: 75 },
+      phantom: { dmgPct: 480, splashPct: 480, radius: 1.4, range: 10, castSec: 0.5, cd: 10 },
     },
-    essence: { valuePerPoint: 8.44, reserveRule: SHAMAN ? 20 : null },
+    essence: { valuePerPoint: 8.44, reserveRule: SHAMAN ? 20 : REAPER ? 0 : null },
     // Client potion tooltip (L93399): 35 % life at once, then 20 % over 3 s, 1.5 s cooldown.
     potion: { instantPct: 35, hotPct: 20, hotSec: 3, cdSec: 1.5 },
     gear: null,
@@ -116,6 +133,14 @@
     hatchet: { aps: 1.1, // Taille de pierre (arc 2.3 m) / Totem lance
       spiritclaws: { dmgPct: 82.2, splashPct: 82.2, radius: 2.3, range: 2.3, sec: 1 / 1.1 },
       crows: { dmgPct: 5.4, splashPct: 5.4, radius: 3, range: 12, sec: 0.5 } },
+    // Reaper (bundle Vh.reaper): sickle LMB 1.72 x reap, RMB reaping dash (line 6 m); great scythe narrow 6.5 m arc, boomerang RMB.
+    scythe: { aps: 1.2 },
+    sickle: { aps: 1.3,
+      reap: { dmgPct: 301, splashPct: 301, radius: 2, inner: 0, range: 3.5, sec: 1 / 1.3 },
+      harvest: { dmgPct: 547, splashPct: 547, radius: 0.95, range: 6, sec: 0.45, dash: 6 } },
+    greatscythe: { aps: 0.75,
+      reap: { dmgPct: 201, splashPct: 201, radius: 6.5, inner: 1.5, range: 6.5, sec: 1 / 0.75 },
+      harvest: { dmgPct: 324, splashPct: 324, radius: 1, range: 9, sec: 0.55, dash: 9 } },
   };
   const sk = (id, base = g.char.eq?.weapon?.base) => ({ ...SV.skills[id], ...WPN[base]?.[id] });
   const PLAYER_SPEED = 5.28;
@@ -128,7 +153,7 @@
   // Death cost: learned xp lost plus xp not earned until the next kill; prior 75 s of farming.
   const deathCostXp = () => ad.deathCost ?? 75 * xpps();
 
-  // Open-world farming zones (client table `bd`): center, radius, monster level range.
+  // Open-world farming zones (client table `md`, live bundle L27290): center, radius, monster level range.
   const ZONES = [
     { name: 'Bois des Hurlements', x: -52, z: 8, r: 30, lvl: [1, 3] },
     { name: 'Camp des Gobelins', x: -82, z: -48, r: 27, lvl: [3, 5] },
@@ -137,6 +162,11 @@
     { name: 'Antre de Grukk', x: 0, z: -100, r: 26, lvl: [10, 12] },
     { name: 'Sylve de Moisivert', x: -130, z: 150, r: 38, lvl: [9, 13] },
     { name: 'Carrières de Rochenoire', x: -112, z: -104, r: 30, lvl: [13, 16] },
+    { name: 'Marais de Brumelande', x: -160, z: 70, r: 42, lvl: [12, 16] },
+    { name: 'Terres de Cendre', x: 160, z: -30, r: 44, lvl: [17, 22] },
+    { name: 'Cimes de Givrecroc', x: 20, z: 178, r: 42, lvl: [17, 22] },
+    { name: 'Nécropole de Malachar', x: 5, z: -170, r: 40, lvl: [23, 30] },
+    { name: 'La Faille d’Ombreval', x: 160, z: 150, r: 38, lvl: [27, 30] },
   ];
   // UCB1 over arms {mean, n}: unvisited arms first, exploration scaled by the best mean.
   function ucbPick(arms, c = 1) {
@@ -178,34 +208,71 @@
       list.push({ name: 'quête : ' + questKey(q), x: q.x, z: q.z, r: Math.max(15, q.r ?? 25), lvl: [q.minLevel ?? 1, q.minLevel ?? 1], quest: true });
     return list.sort((a, b) => a.lvl[0] - b.lvl[0] || a.lvl[1] - b.lvl[1]);
   }
+  // Arm level: a dungeon's level, a zone's mid level, a quest area's minimum level.
+  const armLvl = z => z.dun ? z.dun.d.level : z.quest ? z.lvl[0] : (z.lvl[0] + z.lvl[1]) / 2;
+  // Learned xp falloff per level of gap above an arm (prior 0.9), see learnFall.
+  const fall = () => ad.fall?.f ?? 0.9;
+  // Level-weighted stats of an arm at level a: a bucket k levels old weighs STALE^k, and its xp is moved to our level by
+  // the falloff (only the part of the gap above the arm counts).
+  const STALE = 0.5;
+  function armStat(name, a) {
+    const o = { xp: 0, ms: 0, deaths: 0, kills: 0, gold: 0, runs: 0 };
+    for (const [L, b] of Object.entries(ad.zones[name]?.lv ?? {})) {
+      const w = STALE ** Math.max(0, g.level - L), f = fall() ** (Math.max(0, g.level - a) - Math.max(0, L - a));
+      for (const k of STAT_KEYS) o[k] += (b[k] ?? 0) * w * (k === 'xp' ? f : 1);
+    }
+    return o;
+  }
+  // Falloff sample per arm from its two latest level buckets with 20+ kills: xp per kill ratio per level of gap.
+  function learnFall() {
+    for (const z of armList(st.quest)) {
+      const a = armLvl(z), bs = Object.entries(ad.zones[z.name]?.lv ?? {}).filter(([, b]) => (b.kills ?? 0) >= 20).sort((x, y) => x[0] - y[0]).slice(-2);
+      if (bs.length < 2) continue;
+      const [[L1, b1], [L2, b2]] = bs, dg = Math.max(0, L2 - a) - Math.max(0, L1 - a);
+      if (dg <= 0 || !b1.xp || !b2.xp) continue;
+      // TODO(ceiling): quest and boss xp ride on kill counts; samples are bounded to [0.3, 1.5] against those outliers.
+      const x = Math.min(1.5, Math.max(0.3, (b2.xp / b2.kills / (b1.xp / b1.kills)) ** (1 / dg)));
+      ad.fall = { f: ema(fall(), x, ad.fall?.n ?? 0), n: (ad.fall?.n ?? 0) + 1 };
+    }
+  }
+  // Ladder search as the UCB prior: the arm at our level gets the strongest prior (best measured rate, or our lifetime
+  // rate), 15 % less per level away, held with more pseudo-trials the farther it is, so far-below arms win only on
+  // measured, level-discounted value. The first unmeasured arm above the best measured one is primed 10 % above it:
+  // climb while the next rung pays, step back down once it is measured worse.
   function zoneArms() {
-    const q = st.quest, L = armList(q), dc = deathCostXp(), xg = xpPerGold();
-    const base = L.reduce((best, z, i) => z.lvl[1] <= g.level - 1 ? i : best, 0);
-    const known = L.map(z => ad.zones[z.name]).filter(s => s?.ms > 60000);
-    const top = Math.max(xpps() * 3600, ...known.map(s => armNet(s, xg, dc)));
-    const t = Date.now();
-    return L.map((z, i) => {
-      const s = ad.zones[z.name] ?? { xp: 0, ms: 0, deaths: 0 };
-      const prior = top * (1 - 0.2 * Math.abs(i - base)), pms = ZONE_DWELL;
+    const q = st.quest, L = armList(q), dc = deathCostXp(), xg = xpPerGold(), t = Date.now(), lv = g.level;
+    const rows = L.map(z => ({ z, a: armLvl(z), s: armStat(z.name, armLvl(z)) }));
+    const fresh = rows.filter(r => r.s.ms > 5 * 60000).map(r => ({ ...r, net: armNet(r.s, xg, dc) })).sort((x, y) => y.net - x.net);
+    const top = Math.max(fresh[0]?.net ?? 0, xpps() * 3600);
+    const best = fresh[0], next = best && rows.filter(r => r.a > best.a && r.s.ms <= 5 * 60000 && (r.z.dun ? r.z.dun.d.level <= lv : r.z.lvl[0] <= lv)).sort((x, y) => x.a - y.a)[0];
+    return rows.map(({ z, a, s }) => {
+      const gap = Math.abs(a - lv), pms = ZONE_DWELL * (1 + gap);
+      let prior = top * 0.85 ** gap;
+      if (next && z === next.z) prior = Math.max(prior, best.net * 1.1);
       // Recent deaths there, as a death rate over the recent window: pushes the arm away for a while.
       const recent = ad.recentDeaths.filter(d => d.zone === z.name && t - d.t < RECENT_MS).length * dc / RECENT_MS * 3.6e6;
       const qb = holdsQuest(z, q) ? questBonus(q, z, s) : 0;
       const mean = (prior * pms + armNet(s, xg, dc) * s.ms) / (pms + s.ms) - recent + qb;
-      const lvlOk = z.dun ? z.dun.d.level <= g.level && !(DUN_SKIP.get(z.dun.d.id) > Date.now()) && !expFull(z.dun.d.id)
-        : z.quest ? (q.minLevel ?? 1) <= g.level - 1 : z.lvl[0] <= g.level;
-      return { z, mean, qb, n: (pms + s.ms) / ZONE_DWELL, ok: lvlOk && (Math.abs(i - base) <= 2 || qb > 0) };
+      const ok = z.dun ? z.dun.d.level <= lv && !(DUN_SKIP.get(z.dun.d.id) > Date.now()) && !expFull(z.dun.d.id)
+        : z.quest ? (q.minLevel ?? 1) <= lv - 1 : z.lvl[0] <= lv;
+      return { z, a, mean, qb, n: (pms + s.ms) / ZONE_DWELL, ok };
     });
   }
+  // Re-pick after the dwell, on a level up, on a quest change, or when the picked dungeon cannot be entered now.
   function pickZone() {
-    const qk = st.quest ? questKey(st.quest) : null;
-    if (st.zonePick && now() - st.zonePickAt < ZONE_DWELL && st.zonePick.lvl[0] <= g.level && st.zonePickQ === qk) return st.zonePick;
+    const qk = st.quest ? questKey(st.quest) : null, p = st.zonePick;
+    const blocked = p?.dun && !g.dungeon && (DUN_SKIP.get(p.dun.d.id) > Date.now() || expFull(p.dun.d.id));
+    if (p && now() - st.zonePickAt < ZONE_DWELL && p.lvl[0] <= g.level && st.zonePickQ === qk && st.zonePickLvl === g.level && !blocked) return p;
     const arms = zoneArms().filter(a => a.ok);
     st.zoneArms = arms;
-    st.zonePick = arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk;
+    st.zonePick = arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk; st.zonePickLvl = g.level;
+    (st.ladder ??= []).push(`${new Date().toTimeString().slice(0, 5)} niv${g.level} ${st.zonePick.name}`); if (st.ladder.length > 30) st.ladder.shift();
+    jlog('bras', { arm: st.zonePick.name, arms: arms.map(a => `${a.z.name}|${a.a}|${Math.round(a.mean)}|${a.n.toFixed(1)}`) });
     return st.zonePick;
   }
   // Expeditions still open (left less than ad.exp.ms ago, or the one we stand in); a new dungeon needs a free slot.
-  const openExp = () => ad.dunOpen.filter(o => Date.now() - o.at < ad.exp.ms).map(o => o.id).concat(g.dungeon ? [g.dungeon.def.id] : []);
+  // Re-entering a still open instance must not count it twice (ids are unique; '?' fillers from the toast are not).
+  const openExp = () => { const o = ad.dunOpen.filter(x => Date.now() - x.at < ad.exp.ms).map(x => x.id); return g.dungeon && !o.includes(g.dungeon.def.id) ? o.concat(g.dungeon.def.id) : o; };
   const expFull = id => { const o = openExp(); return o.length >= ad.exp.max && !o.includes(id); };
   // Refusal toast ("Vous avez déjà 2 expéditions ouvertes : elles se referment 5 minutes après votre départ."):
   // learn the cap and delay, and fill the open list up to the cap so no new door is tried before one closes.
@@ -218,7 +285,7 @@
   }
   // Door of the picked dungeon arm, when it is still enterable.
   const armDoor = () => {
-    const o = !g.dungeon && st.zonePick?.dun;
+    const o = !g.dungeon && !grouped() && st.zonePick?.dun;
     return o && o.d.level <= g.level && !(DUN_SKIP.get(o.d.id) > Date.now()) && !expFull(o.d.id) ? o : null;
   };
   let LEASH = 45;
@@ -230,11 +297,104 @@
 
   const now = () => performance.now();
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+  // Learned blocked cells (1 m): we pushed toward them and did not move (obstacles the client grid lacks, bodies).
+  // Per collision map; a cell expires after its ttl, which doubles each time it blocks us again.
+  const blocked = { c: null, m: new Map() };
+  const cellKey = (x, z) => Math.round(x) * 100003 + Math.round(z);
+  const blockedAt = (c, x, z) => {
+    if (blocked.c !== c) return false;
+    const b = blocked.m.get(cellKey(x, z));
+    return !!b && Date.now() < b.until;
+  };
+  function markBlocked(x, z) {
+    const c = g.dungeon?.collision ?? g.world?.collision;
+    if (blocked.c !== c) { blocked.c = c; blocked.m.clear(); }
+    const k = cellKey(x, z), b = blocked.m.get(k), ttl = b ? Math.min(3600000, b.ttl * 2) : 120000;
+    blocked.m.set(k, { until: Date.now() + ttl, ttl });
+  }
   const solid = (x, z) => {
     const c = g.dungeon?.collision ?? g.world?.collision;
-    try { return !!c?.solidAt(x, z, 0.6); } catch { return false; }
+    try { return !!c?.solidAt(x, z, 0.6) || blockedAt(c, x, z); } catch { return false; }
   };
-  const ready = id => !(g.sim.cds?.[id] > 0);
+  // Charges (bundle aT / L54721): usable while cds <= (charges - 1) x cd. Reaper: rp_dodge (+1, oath of the void +2)
+  // on the roll, souldash rank 3 a 2nd charge. The roll cd ignores cdr.
+  const charges = id => !REAPER ? 1 : id === 'roll' ? 1 + +!!g.char.ch.tree?.rp_dodge + (g.char.ch.tree?.rp_oath_void ? 2 : 0)
+    : id === 'souldash' && (g.char.ch.tree?.souldash ?? 0) >= 3 ? 2 : 1;
+  const cdOf = id => id === 'roll' ? 4.5 : (sk(id).cd ?? 0) * (1 - (g.stats?.cdr ?? 0));
+  const ready = id => (g.sim.cds?.[id] ?? 0) <= (charges(id) - 1) * cdOf(id) + 1 / 60;
+
+  // --- Group mode (window.__botOpts.group, GROUP.md): follow the party member closest in level, assist and protect.
+  // Inert unless the option is on and g.party holds someone besides us.
+  const grp = { leadId: null, deadAt: 0, last: null, tgt: new Map(), onMate: new Map(), band: 10, fd: 0, fn: 0 };
+  const grouped = () => window.__botOpts?.group === true && (g.party?.length ?? 0) > 1;
+  const BAND = SHAMAN || REAPER ? [4, 8] : [8, 12]; // necro: skeletons hold in front; shaman: totem and heal range
+  // Pure pick: smallest level gap, then the real leader (lead), the nearest, the smallest id. The current one is kept
+  // unless another is 2+ levels closer to ours.
+  function pickLeader(party, meId, lvl, me, cur) {
+    const c = party.filter(p => p.id !== meId && !p.dead);
+    if (!c.length) return null;
+    const key = p => [Math.abs(p.lvl - lvl), p.lead ? 0 : 1, Math.hypot(p.x - me.x, p.z - me.z), p.id];
+    c.sort((a, b) => { const x = key(a), y = key(b); for (let i = 0; i < 4; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1; return 0; });
+    const keep = c.find(p => p.id === cur);
+    return keep && Math.abs(keep.lvl - lvl) - Math.abs(c[0].lvl - lvl) < 2 ? keep : c[0];
+  }
+  // Leader dead: stay with the body up to 60 s, then pick the next one.
+  function leader() {
+    if (!grouped()) { grp.leadId = null; return null; }
+    const cur = g.party.find(p => p.id === grp.leadId);
+    if (cur?.dead) { grp.deadAt ||= now(); if (now() - grp.deadAt < 60000) return cur; } else grp.deadAt = 0;
+    const l = pickLeader(g.party, g.meId, g.level, g.sim, grp.leadId);
+    grp.leadId = l?.id ?? null;
+    return l;
+  }
+  const leaderPos = l => { const r = g.remotes?.get?.(l.id); return r?.view?.pos ? { x: r.view.pos.x, z: r.view.pos.z } : { x: l.x, z: l.z }; };
+  const mateIds = () => new Set((g.party ?? []).map(p => p.id).filter(id => id !== g.meId));
+  // Member map: '' (or none) = world layer 1, 'cN' = another layer, else a dungeon instance key; same map = equal to g.mapKey.
+  const mapOf = l => l.w || '';
+  const sameMap = l => mapOf(l) === (g.mapKey || '');
+  const inDungeonKey = w => !!w && !/^c\d+$/.test(w);
+  // Score multiplier: the leader's target x3, a monster on a member x2 (x4 under 40 % hp), else 1.
+  function groupMul(m) {
+    if (!grouped()) return 1;
+    if (now() - (grp.tgt.get(m.id) ?? -1e9) < 3000) return 3;
+    const o = grp.onMate.get(m.id);
+    if (o && now() - o.at < 4000) return (g.party.find(p => p.id === o.mate)?.hp ?? 100) < 40 ? 4 : 2;
+    return 1;
+  }
+  const onMate = m => grouped() && now() - (grp.onMate.get(m.id)?.at ?? -1e9) < 4000;
+  const leadTgt = m => grouped() && now() - (grp.tgt.get(m.id) ?? -1e9) < 3000;
+  function groupHit(ev) {
+    if (!grouped()) return;
+    const isMon = id => g.entities.monsters.has(id);
+    const owner = g.entities.allies?.get?.(ev.s)?.view?.ally;
+    if ((ev.s === grp.leadId || (owner != null && owner === grp.leadId)) && isMon(ev.id)) grp.tgt.set(ev.id, now());
+    if (mateIds().has(ev.id) && isMon(ev.s)) grp.onMate.set(ev.s, { at: now(), mate: ev.id });
+  }
+  // Follow need: leader on another map, or beyond 1.5 band.
+  function needFollow() {
+    const l = grouped() ? leader() : null;
+    return !!l && (!sameMap(l) || dist(g.sim, leaderPos(l)) > grp.band * 1.5);
+  }
+  // Same map: walk to the leader. Leader in a dungeon and we outside: the door nearest its last world position, enter.
+  // Leader back outside while we are in: leave. A jump over 30 m (waystone) drops the follow trip plan.
+  function followRun() {
+    const l = leader(), t = now();
+    if (!l) return [0, 0];
+    const p = { x: l.x, z: l.z };
+    if (!mapOf(l)) { if (grp.last && dist(grp.last, p) > 30 && st.wayPlans) delete st.wayPlans.follow; grp.last = p; }
+    st.last = `groupe : suit ${l.n}`;
+    if (sameMap(l)) return travel(leaderPos(l), 'follow');
+    if (inDungeonKey(mapOf(l)) && !g.dungeon && grp.last) {
+      const door = (g.portals?.doors ?? []).reduce((b, o) => !b || dist(o.at, grp.last) < dist(b.at, grp.last) ? o : b, null);
+      if (!door) return [0, 0];
+      st.last = `groupe : rejoint ${l.n} (${door.d.name})`;
+      if (dist(g.sim, door.at) > 4) return travel({ x: door.at.x, z: door.at.z }, 'follow');
+      if (t - (st.dunSendAt ?? 0) > 3000) { st.dunSendAt = t; g.send({ t: 'dungeon', a: 'enter', d: door.d.id }); }
+      return [0, 0];
+    }
+    if (!mapOf(l) && g.dungeon) { if (t - (st.dunSendAt ?? 0) > 3000) { st.dunSendAt = t; g.send({ t: 'dungeon', a: 'leave' }); } return [0, 0]; }
+    return [0, 0]; // other layer: wait here, fighting what comes
+  }
 
   function monsters() {
     const out = [], ms = meState();
@@ -242,7 +402,7 @@
       if (m.dead || m.hp <= 0) continue;
       // Bosses, elites and higher levels are targets whenever the engagement model says we win (dungeons: always).
       if (!g.dungeon && !engage({ hp: m.hp, dps: enemyDps(m), n: 1 }, ms).ok) continue;
-      const onUs = dist(m.pos, g.sim) < 10 && ['chase', 'windup', 'strike'].includes(m.state);
+      const onUs = (dist(m.pos, g.sim) < 10 && ['chase', 'windup', 'strike'].includes(m.state)) || onMate(m);
       if (!onUs && st.home && dist(m.pos, st.home) > LEASH + 8) continue;
       if (!onUs && inDanger(m.pos)) continue;
       out.push(m);
@@ -290,7 +450,7 @@
     return best;
   }
   function retreatCands(me) {
-    const out = [], army = SHAMAN ? [] : myAllies(), h = st.home ?? me;
+    const out = [], army = PETLESS ? [] : myAllies(), h = st.home ?? me;
     if (SHAMAN && totemLeft() > 0) out.push(st.totemPos); // shaman: fall back on the totem (heal 1.5 %/s at 8 m)
     if (army.length) out.push({ x: army.reduce((a, v) => a + v.pos.x, 0) / army.length, z: army.reduce((a, v) => a + v.pos.z, 0) / army.length });
     for (let i = 0; i < 12; i++) {
@@ -464,9 +624,13 @@
     const power = S.power / (0.04 * lb + b.pow) * (0.04 * lb + a.pow), life = S.life / (lb + b.hp) * (lb + a.hp);
     // TODO(ceiling): execute assumed to boost ~35% of our damage (share landing under 35% hp); fit from fight data.
     const hit = power * (1 + v('crit') / 100 * v('critDmg') / 100) * (1 + 0.35 * v('execute') / 100);
-    const base = eq.weapon?.base, aps = WPN[base]?.aps ?? S.aps, bolt = sk(SHAMAN ? 'spiritclaws' : 'bonebolt', base);
+    const base = eq.weapon?.base, aps = WPN[base]?.aps ?? S.aps, bolt = sk(BASE_SKILLS[0], base);
     let dps;
-    if (SHAMAN) {
+    if (REAPER) {
+      // gear.formula.dpsIndex: click 80 % of the time, harvest term (sickle dash 90, great scythe 54), spells 164 %/s, Trepas /(1-0.2).
+      const sec = bolt.sec ?? 0.8 / aps, harv = base === 'sickle' ? 90 : base === 'greatscythe' ? 54 : 43;
+      dps = hit * (0.8 * bolt.dmgPct / sec + harv + 164 / (1 - v('cdr') / 100)) / 100 / 0.8;
+    } else if (SHAMAN) {
       // gear.formula.dpsIndex: claws 75 % of casts (0.72/aps), crows 144 %/3 s (classic totem only), totem + boar 78 %/s.
       const sec = bolt.sec ?? 0.72 / aps;
       dps = hit * (0.75 * bolt.dmgPct / sec + (bolt.sec ? 0 : 48) + 78 / (1 - v('cdr') / 100)) / 100;
@@ -477,7 +641,10 @@
     }
     // TODO(ceiling): leech counted as 5 s of healing at our dps; guard ignores enemy penetration.
     const ehp = life / (1 - v('guard') / 100) + v('leech') / 100 * dps * 5;
-    return { hit, aps, dps, ehp };
+    // Reaper sustained travel speed (REAPER.md): walk w plus a 9 m pass every 4.5 s and a 10 m rush every 9 s (cdr).
+    const w = PLAYER_SPEED * ((S.moveSpd ?? 1) + ((a.moveSpd ?? 0) - (b.moveSpd ?? 0)) / 100);
+    const vt = w + (9 - 0.22 * w) / 4.5 + (10 - 0.3125 * w) / (9 * (1 - v('cdr') / 100));
+    return { hit, aps, dps, ehp, vt };
   }
   const curSheet = () => {
     if (!st.sheet || now() - st.sheetAt > 2000) { st.sheet = sheet(); st.sheetAt = now(); }
@@ -486,7 +653,10 @@
   // Cast time: weapon clicks use their own (sec); classic bonebolt/blight scale with attack speed (dur/aps); other spells
   // are fixed but shortened by haste (aN: dur/(1+haste/100)).
   // Shaman claws/crows: 0.72/p and 0.7/p, p = aps x 1.3 under the wolf howl (g.sim.over > 0).
-  const castSec = id => SHAMAN && (id === 'spiritclaws' || id === 'crows')
+  // Reaper: reap 0.8/aps, harvest 0.7/sqrt(aps) (weapon clicks: their own sec).
+  const castSec = id => REAPER && (id === 'reap' || id === 'harvest')
+    ? sk(id).sec ?? (id === 'reap' ? 0.8 / curSheet().aps : 0.7 / Math.sqrt(curSheet().aps))
+    : SHAMAN && (id === 'spiritclaws' || id === 'crows')
     ? sk(id).sec ?? (id === 'crows' ? 0.7 : 0.72) / (curSheet().aps * (g.sim.over > 0 ? 1.3 : 1))
     : (id === 'bonebolt' || id === 'blight')
     ? sk(id).sec ?? (sk(id).castSec ?? 0.58) * SV.assumptions.aps / curSheet().aps : (sk(id).castSec ?? 0.6) / (1 + (g.stats?.haste ?? 0) / 100);
@@ -498,11 +668,15 @@
   function priorMyDps() {
     const { hit } = curSheet();
     if (SHAMAN) { const p = shParts(); return hit * (p.claws + p.crows + p.totem); }
+    if (REAPER) { // reap plus the bar spells at their cooldown, raised by the Trepas share
+      const spells = g.char.bar.reduce((a, id) => a + (id && sk(id).cd ? (sk(id).dmgPct ?? 0) / 100 / cdOf(id) : 0), 0);
+      return hit * (sk('reap').dmgPct / 100 / castSec('reap') + spells) / (1 - trepasTh());
+    }
     return hit * (sk('bonebolt').dmgPct / 100 / castSec('bonebolt') + servantCount() * SKEL_DPS + (golemAlive() ? GOLEM_DPS : 0));
   }
   const myDps = () => priorMyDps() * ad.dpsRatio;
   // Shaman: crows (3 m) and totem (8 m) hit every target, the claws line about half an extra one.
-  const splashShare = () => SHAMAN ? (p => (p.crows + p.totem + 0.5 * p.claws) / (p.claws + p.crows + p.totem))(shParts())
+  const splashShare = () => REAPER ? 0.8 : SHAMAN ? (p => (p.crows + p.totem + 0.5 * p.claws) / (p.claws + p.crows + p.totem))(shParts())
     : (sk('bonebolt').splashPct ?? 0) / (sk('bonebolt').dmgPct || 1);
 
   // --- Target priority (Smith's rule): incoming dps removed per second of our time.
@@ -519,7 +693,7 @@
     return 1 + Math.log1p(per / Math.max(1, ad.tot.xp / ad.tot.kills));
   }
   const smith = (o, kite) => smithScore(enemyDps(o.m), o.m.hp, myDps(), o.d,
-    kite && (o.m.def?.speed ?? 0) > PLAYER_SPEED, now() - (hitUs.get(o.m.id) ?? -1e9) < 3000) * questMul(o.m);
+    kite && (o.m.def?.speed ?? 0) > PLAYER_SPEED, now() - (hitUs.get(o.m.id) ?? -1e9) < 3000) * questMul(o.m) * groupMul(o.m);
 
   // --- Engagement model: time to kill vs time to die, with a self-tuned safety margin.
   function engage(f, me) {
@@ -530,7 +704,7 @@
   }
   const meState = () => ({
     dps: myDps(), hp: g.hp, potHeal: (SV.potion.instantPct + SV.potion.hotPct) / 100 * g.life, potions: g.char.potions, potCd: SV.potion.cdSec, splash: splashShare(),
-    soak: SHAMAN ? shSoak() : 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin,
+    soak: SHAMAN ? shSoak() : REAPER ? rpSoak() : 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin,
   });
   // Single-linkage clusters (8 m) of all live visible monsters; a group with a non-target member is not pullable.
   function groupsOf(all, allowed) {
@@ -587,6 +761,8 @@
       f.minHp = Math.min(f.minHp, hpPct); f.last = t; f.strat = st.strat;
       if (st.mainKind) f.kinds[st.mainKind] = 1;
       f.maxAtk = Math.max(f.maxAtk, attackers.length);
+      const l = grouped() && grp.leadId != null ? g.party.find(p => p.id === grp.leadId) : null;
+      if (l && sameMap(l)) { grp.fd += dist(g.sim, leaderPos(l)); grp.fn++; }
       for (const o of attackers) if (!f.seen.has(o.m.id)) {
         f.seen.add(o.m.id);
         const key = `${o.m.def?.kind}${o.m.level}${o.m.elite ? 'E' : ''}`;
@@ -605,6 +781,9 @@
   function endFight(died) {
     const f = st.fight; st.fight = null;
     if (!f) return;
+    // Group band: mean distance to the leader during fights won, within the class bounds.
+    if (!died && grp.fn > 10) grp.band = Math.min(BAND[1], Math.max(BAND[0], ema(grp.band, grp.fd / grp.fn, 4)));
+    grp.fd = 0; grp.fn = 0;
     const ms = now() - f.t0, gained = (st.xpTot ?? 0) - f.xp0, xp = gained - (died ? deathCostXp() : 0);
     const add = (o, key) => { const s = o[key] ??= { xp: 0, ms: 0, n: 0 }; s.xp += xp; s.ms += ms; s.n++; };
     add(ad.pull, f.b);
@@ -630,7 +809,7 @@
     const counts = {};
     for (const o of eng) counts[o.m.def?.kind] = (counts[o.m.def?.kind] ?? 0) + 1;
     const kind = st.mainKind = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-    if (SHAMAN) return 'kite'; // no army to hold behind; kiteMove stays in the totem heal while it stands
+    if (PETLESS) return 'kite'; // no army to hold behind; kiteMove stays in the totem heal (shaman) or the scythe band (reaper)
     let s =slow >= 0.3 ? 'kite' : 'hold';
     const rate = x => x && x.ms > 60000 ? x.xp / x.ms : null;
     const rk = rate(ad.strat[`kite|${kind}`]), rh = rate(ad.strat[`hold|${kind}`]);
@@ -680,14 +859,17 @@
     const mel = eng.filter(o => !isRanged(o.m) && (o.m.def?.speed ?? 0) > 0);
     const flee = mel.filter(o => ATTACK_STATES.includes(o.m.state) && o.m.def.speed < vMe);
     const gapAt = (o, p) => strikeGap(dist(p, o.m.pos), reachOf(o.m), kMargin(o.m), o.m.def.speed, T, o.m.state === 'chase');
-    const band = kiteBand(Math.max(0, ...mel.map(o => reachOf(o.m))), Math.max(0, ...mel.map(o => kMargin(o.m))),
-      sk(BASE_SKILLS[0]).range ?? 12, (tgt?.def?.speed ?? 0) * lat());
+    // Reaper: the scythe edge band on the target [inner, outer - slip]; strikes are taken, so threats weigh little until hp is low.
+    const band = REAPER ? { lo: sk('reap').inner ?? 1.4, hi: (sk('reap').range ?? 4.6) - Math.max(0.4, (tgt?.def?.speed ?? 0) * lat()) }
+      : kiteBand(Math.max(0, ...mel.map(o => reachOf(o.m))), Math.max(0, ...mel.map(o => kMargin(o.m))),
+        sk(BASE_SKILLS[0]).range ?? 12, (tgt?.def?.speed ?? 0) * lat());
+    const fleeW = REAPER && g.hp / g.life >= 0.5 ? 0.3 : 3;
     const tot = SHAMAN && totemLeft() > 0, totR = (sk('ancestortotem').radius ?? 8) - ME_R;
     const idle = [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0 && m.state === 'idle' && !eng.some(o => o.m === m));
     const shots = shotsAtMe(me), r = Math.max(1, vMe * T), last = now() - (st.kiteAt ?? -1e9) < 300 ? st.kiteDir : null;
     const score = p => {
       let v = 0;
-      for (const o of flee) v += 3 * Math.max(0, -gapAt(o, p));
+      for (const o of flee) v += fleeW * Math.max(0, -gapAt(o, p));
       if (tgt) { const dt = dist(p, tgt.pos); v += Math.max(0, band.lo - dt) + Math.max(0, dt - band.hi); }
       v += spread(p, eng);
       for (const m of idle) v += Math.max(0, chaseRange(m.def?.kind) - dist(p, m.pos));
@@ -770,8 +952,23 @@
     const cover = crowsLive() && near.length ? near.filter(m => dist(m.pos, st.crowsPt) <= sk('crows').radius).length / near.length : 0;
     return 0.05 * harmony() + (f === 2 ? 0.08 : 0) + 0.3 * cover;
   }
+  // --- Reaper (REAPER.md): souls (g.sim.fury), Trepas threshold, spectral form, Shroud after a kill.
+  const souls = () => g.sim.fury ?? 0;
+  const soulTier = () => Math.min(4, Math.floor(souls() / 25));
+  const trepasTh = () => 0.14 + 0.03 * soulTier() + 0.03 * (g.char.ch.tree?.rp_harvester ?? 0);
+  const wraithLeft = () => st.wraithAt ? Math.max(0, (sk('wraithform').duration ?? 7) - (now() - st.wraithAt) / 1000) : 0;
+  function rpTick() {
+    const a = g.sim.action, t = now();
+    if (a?.type === 'wraithform' && t - (st.wraithAt ?? -1e9) > 2000) st.wraithAt = t;
+  }
+  // Damage taken saved: spectral form 50 %, Shroud 20 % for 2 s after a kill near us.
+  const rpSoak = () => wraithLeft() > 0 ? 0.5 : now() - (st.killAt ?? -1e9) < 2000 ? 0.2 : 0;
+  // Roll landing point: the reaper roll teleports to the cursor (+1.6 m, 9 m max), so every roll aims explicitly.
+  const rollAim = dir => { const l = Math.hypot(dir[0], dir[1]) || 1; return { x: g.sim.x + dir[0] / l * 7.4, z: g.sim.z + dir[1] / l * 7.4 }; };
   // Dodge: sh_dodge gives Raven flight a 2nd charge (cd 4 s, usable while cds.roll <= 4), so rolls may chain after 2 s.
-  const rollReady = () => (SHAMAN && g.char.ch.tree?.sh_dodge ? (g.sim.cds?.roll ?? 0) <= 4.01 : ready('roll'))
+  // Reaper: charges come from ready('roll'); 300 ms between two passes.
+  const rollReady = () => REAPER ? ready('roll') && now() - (st.rollAt ?? 0) > 300
+    : (SHAMAN && g.char.ch.tree?.sh_dodge ? (g.sim.cds?.roll ?? 0) <= 4.01 : ready('roll'))
     && now() - (st.rollAt ?? 0) > (SHAMAN && g.char.ch.tree?.sh_dodge ? 2000 : 4600);
   // Mobs on the line from me through each candidate within range (half width w): best direction and its end point.
   function bestLine(mobs, range, w) {
@@ -835,9 +1032,44 @@
     const aim = bestAoe(mobs, rg('spiritclaws'), 1.5); // 3 m line under the cursor
     return aim ? go('spiritclaws', 2, aim) : null;
   }
+  // Reaper priorities (REAPER.md "Combat"): survival, requiem, mark, knell, spectral rush, phantom scythe, harvest, reap.
+  // Clicks root: reap only on a monster inside the edge [inner, range].
+  function chooseReaper({ mobs, attackers, hpPct, ess }) {
+    const bar = g.char.bar, on = id => bar.includes(id) && ready(id), R = id => sk(id).radius, rg = id => sk(id).range;
+    const go = (id, ev, aim = null) => ({ id, slot: bar.indexOf(id), aim, ev });
+    const near = r => mobs.filter(o => o.d <= r), elite = list => list.some(o => o.m.elite || o.m.boss);
+    const contact = attackers.filter(o => o.d < 3);
+    if (g.sim.action?.type === 'requiem') return null;
+    if (on('wraithform') && !wraithLeft() && ((hpPct < 0.5 && attackers.length >= 2) || elite(contact))) return go('wraithform', 10);
+    if (on('requiem') && ((hpPct < 0.3 && !wraithLeft() && !on('wraithform') && attackers.length) || near(R('requiem')).length >= 4 || elite(near(R('requiem'))))) return go('requiem', 9);
+    if (on('doom')) {
+      const aim = bestAoe(mobs, rg('doom'), R('doom')), inR = aim ? mobs.filter(o => dist(o.m.pos, aim) <= R('doom')) : [];
+      if (inR.length >= 2 || elite(inR)) return go('doom', 8, aim);
+    }
+    if (on('knell') && (near(R('knell')).length >= 2 || elite(near(R('knell'))))) return go('knell', 7);
+    if (on('souldash')) {
+      const ln = bestLine(mobs, rg('souldash'), R('souldash'));
+      if (ln && dist(ln, g.sim) >= (sk('souldash').minRange ?? 4) && (ln.n >= 2 || elite(near(rg('souldash'))) || contact.length >= 3)) return go('souldash', 6, ln);
+    }
+    if (on('phantom')) {
+      const ln = bestLine(mobs.filter(o => o.d >= 5), rg('phantom'), R('phantom'));
+      if (ln) return go('phantom', 5, ln);
+    }
+    const hv = sk('harvest'), cost = (hv.cost ?? 22) - (g.char.ch.tree?.rp_harvest && !hv.dash ? 10 : 0);
+    if (bar.includes('harvest') && ess >= cost) {
+      if (hv.dash) { const ln = bestLine(mobs, hv.range, hv.radius); if (ln?.n >= 2) return go('harvest', 4, ln); }
+      else {
+        const inR = near(hv.radius), fin = inR.some(o => !o.m.boss && (o.m.hp - curSheet().hit * hv.dmgPct / 100) / (o.m.maxHp ?? o.m.hp) < trepasTh());
+        if (inR.length >= 2 || fin) return go('harvest', 4, inR[0].m.pos);
+      }
+    }
+    const rp = sk('reap'), edge = mobs.filter(o => o.d >= (rp.inner ?? 1.4) && o.d <= rp.range);
+    return edge.length ? go('reap', 2, edge[0].m.pos) : null;
+  }
   // TODO(ceiling): utility horizons (skeleton 20 s, golem 30 s) are guesses; xp/s learning does not tune them.
   function chooseSkill(ctx) {
     if (SHAMAN) return chooseShaman(ctx);
+    if (REAPER) return chooseReaper(ctx);
     const { mobs, me, attackers, hpPct, hpDrop, ess } = ctx;
     const hit = curSheet().hit, essVal = SV.essence.valuePerPoint / 100 * hit;
     const missing = skelCap() - servantCount(), raiseOn = g.char.bar.includes('raise');
@@ -912,14 +1144,14 @@
 
   // Build plan (build.json, injected by run.mjs as window.__botBuild): talents, attributes, bar.
   const BUILD = window.__botBuild;
-  const BASE_SKILLS = SHAMAN ? ['spiritclaws', 'crows'] : ['bonebolt', 'blight'];
+  const BASE_SKILLS = SHAMAN ? ['spiritclaws', 'crows'] : REAPER ? ['reap', 'harvest'] : ['bonebolt', 'blight'];
   // TODO(ceiling): allies carry no owner field: skeletons within 25 m are assumed to be ours.
-  const servantCount = () => SHAMAN ? 0 : myAllies().filter(a => a.def?.kind === 'skeleton').length;
+  const servantCount = () => PETLESS ? 0 : myAllies().filter(a => a.def?.kind === 'skeleton').length;
   // TODO(ceiling): allies carry no owner field: any ally within 25 m is assumed to be ours.
   const myAllies = () => [...g.entities.allies.values()].map(a => a.view).filter(v => v && !v.dead && dist(v.pos, g.sim) < 25);
   // The flesh golem ally uses the `abomination` monster def (client tints ally abominations, L70353).
-  const golemAlive = () => !SHAMAN && myAllies().some(v => v.def?.kind === 'abomination');
-  const skelCap = () => SHAMAN ? 0 : g.level >= 15 ? 6 : g.level >= 8 ? 5 : 4;
+  const golemAlive = () => !PETLESS && myAllies().some(v => v.def?.kind === 'abomination');
+  const skelCap = () => PETLESS ? 0 : g.level >= 15 ? 6 : g.level >= 8 ? 5 : 4;
   function progress() {
     if (!BUILD || now() - (st.progAt ?? 0) < 3000) return;
     st.progAt = now();
@@ -1057,16 +1289,16 @@
   }
 
   // Gear: equip better items from the bag, keep future upgrades, sell the rest at Bertrand.
-  const myWeapons = () => Object.keys(SV.gear?.weaponBases ?? {}).filter(k => k !== 'rule').concat(SV.gear ? [] : SHAMAN ? ['totem', 'antlerstaff', 'hatchet'] : ['bonewand', 'deathstaff']);
+  const myWeapons = () => Object.keys(SV.gear?.weaponBases ?? {}).filter(k => k !== 'rule').concat(SV.gear ? [] : SHAMAN ? ['totem', 'antlerstaff', 'hatchet'] : REAPER ? ['scythe', 'sickle', 'greatscythe'] : ['bonewand', 'deathstaff']);
   const reqLvl = it => Math.max(1, Math.min(200, Number.isFinite(it.ilvl) ? (Math.floor(it.ilvl) === 31 ? 30 : Math.floor(it.ilvl)) : 1));
   // Score: dps x sqrt(EHP) of the whole sheet with `it` worn.
   function gearScore(it) {
     if (!it) return 0;
     if (it.slot === 'weapon' && !myWeapons().includes(it.base)) return -1;
-    const s = sheet(it); return s.dps * Math.sqrt(s.ehp);
+    const s = sheet(it); return s.dps * Math.sqrt(s.ehp) * (REAPER ? s.vt / 7.95 : 1);
   }
   // Score of what we wear in that slot (empty slot: the sheet as is).
-  const wornScore = slot => { const s = sheet(); return s.dps * Math.sqrt(s.ehp); };
+  const wornScore = slot => { const s = sheet(); return s.dps * Math.sqrt(s.ehp) * (REAPER ? s.vt / 7.95 : 1); };
   const beats = it => it && gearScore(it) > wornScore(it.slot) * 1.02;
   // Future upgrades to keep: best per (slot, required level) among items beating what we wear, then the best 2 per slot.
   function keepers() {
@@ -1224,10 +1456,61 @@
 
   // Dungeon run (quest step "Terminer : <dungeon>"): door, rooms in order, boss, chest, leave.
   const DUN_MAX_MS = 12 * 60000;
+  // Monster flag bits (bundle _F/bF L57510): sealed boss (seals alive), warded (shield), enraged.
+  const MF = { enraged: 2, warded: 1 << 17, sealed: 1 << 19 };
+  const isSeal = m => m.def?.kind === 'seal';
+  // Seals (DUNGEONS.md 0): positions from layout.seals; one is done once we stood within 8 m of it with no live seal
+  // entity within 3 m, or for all once the boss is seen without the sealed bit.
+  function sealsLeft() {
+    const L = g.dungeon?.layout, r = st.dun;
+    if (!L?.seals?.length || !r) return [];
+    const done = r.sealsDone ??= new Set(), live = [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0);
+    const boss = live.find(m => m.boss);
+    if (boss && !(boss.flags & MF.sealed)) for (const s of L.seals) done.add(`${s.x | 0},${s.z | 0}`);
+    for (const s of L.seals) if (dist(g.sim, s) < 8 && !live.some(m => isSeal(m) && dist(m.pos, s) < 3)) done.add(`${s.x | 0},${s.z | 0}`);
+    return L.seals.filter(s => !done.has(`${s.x | 0},${s.z | 0}`));
+  }
+  // Target weight in dungeons (DUNGEONS.md 3.2): seals first, then summoners/healers casting; sealed boss and warded
+  // monsters are dropped from the ranking by allowedDun.
+  const SUMMON = /^(mend|raise)$|call$|howl$|^warcry$|^rallyfire$|^brood$/;
+  const dunMul = m => !g.dungeon ? 1 : isSeal(m) ? 1e6 : m.attack === 'cast' && m.state === 'windup' && SUMMON.test(m.spell ?? '') ? 10 : 1;
+  const allowedDun = (o, list) => !g.dungeon || !((o.m.boss && o.m.flags & MF.sealed && sealsLeft().length)
+    || (o.m.flags & MF.warded && list.some(x => x !== o && !(x.m.flags & MF.warded))));
+  // Environment out of fights (DUNGEONS.md 3.3): warm up at a brazier when the cold bites, cleanse at a pylon when corrupted.
+  function dunEnv(r, L, t) {
+    const near = name => (L.placements ?? []).filter(p => p.name === name).sort((a, b) => dist(g.sim, a) - dist(g.sim, b))[0];
+    if (g.dungeon.def.rule === 'cold' && !g.warm && (g.sim.chill ?? 0) >= (r.warming ? 20 : 60)) {
+      const b = near('brazier'); r.warming = !!b;
+      if (b) { st.last = `donjon : se réchauffe (froid ${Math.round(g.sim.chill)})`; return dist(g.sim, b) > 2.5 ? travel({ x: b.x, z: b.z }, 'dungeon') : [0, 0]; }
+    } else if (g.warm && (g.sim.chill ?? 0) >= 20 && r.warming) { st.last = 'donjon : se réchauffe'; return [0, 0]; }
+    else r.warming = false;
+    if (g.dungeon.def.rule === 'corruption' && ((g.cor ?? 0) >= 7 || t < (r.cleanseUntil ?? 0))) {
+      const p = near('pylon');
+      if (p) {
+        st.last = `donjon : se purifie (corruption ${g.cor ?? 0})`;
+        if (dist(g.sim, p) > 4) { r.cleanseUntil = 0; return travel({ x: p.x, z: p.z }, 'dungeon'); }
+        r.cleanseUntil ||= t + 2500;
+        return [0, 0];
+      }
+    }
+    return null;
+  }
+  // Boss enrage (DUNGEONS.md 3.3): enraged, or 20 s before def.boss.enrageAfter after the pull, with the boss above 30 %:
+  // leave rather than die (the run is a bail).
+  function enrageWatch() {
+    const r = st.dun, boss = [...g.entities.visibleMonsters()].find(m => m.boss && !m.dead && m.hp > 0);
+    if (!r || !boss) return;
+    if (!r.pullAt && ATTACK_STATES.includes(boss.state)) r.pullAt = now();
+    const after = g.dungeon.def.boss?.enrageAfter;
+    if (r.pullAt && boss.hp / (boss.maxHp || boss.hp) > 0.3 && (boss.flags & MF.enraged || (after && now() - r.pullAt > (after - 20) * 1000))) {
+      r.phase = 'sortie'; r.bail = true; r.flee = true;
+    }
+  }
   // Dungeon run for the picked dungeon arm (farming or a "Terminer : X" quest): door, rooms in order, boss, chest, leave.
   // No server cooldown exists in the client; a bailed run blocks that dungeon for 30 min.
   const DUN_SKIP = new Map(); // dungeon id -> retry timestamp after a bailed run
   function dungeonRun() {
+    if (grouped() && !(g.dungeon && g.dstate?.boss && !g.dstate.opened)) return [0, 0]; // grouped: the leader runs it, we open our chest
     const me = g.sim, t = now(), dg = g.dungeon, door = dg ? null : armDoor();
     const id = dg?.def.id ?? door?.d.id ?? (st.dun?.phase === 'sortie' ? st.dun.id : null);
     if (!id) { if (st.dun) st.dun.phase = 'fini'; return [0, 0]; }
@@ -1255,20 +1538,40 @@
     const L = dg.layout, ds = g.dstate;
     r.inAt ??= t;
     if (r.phase !== 'sortie') {
-      r.phase = !ds.boss ? 'exploration' : !ds.opened ? 'coffre' : 'sortie';
+      // The chest refuses players not credited with the boss kill (toast caught in onMessage, likely a server bug):
+      // 3 refusals, then skip it and leave; fallback 5 sends without any answer.
+      r.phase = !ds.boss ? 'exploration' : !ds.opened && (r.chestDenied ?? 0) < 3 && (r.chestTries ?? 0) < 5 ? 'coffre' : 'sortie';
       if (r.phase === 'sortie' && t - r.inAt < 10000) r.instantClear = true;
     }
     if (r.phase === 'exploration') {
-      // Visit rooms along the generated order (0 is the spawn, the last one is the boss room).
-      while (r.room < L.rooms.length - 1 && dist(me, { x: L.rooms[r.room].cx, z: L.rooms[r.room].cz }) < 5) r.room++;
-      const room = L.rooms[r.room], goal = r.room < L.rooms.length - 1 ? { x: room.cx, z: room.cz } : L.boss;
-      st.last = `donjon : salle ${r.room}/${L.rooms.length - 1}`;
-      return travel(goal, 'dungeon');
+      const env = dunEnv(r, L, t);
+      if (env) return env;
+      // Route (DUNGEONS.md 3.1): path halls, then annexes (miniboss, side: 2 of the 3 seals sit there), then the seals left,
+      // then the boss. rooms[] lists the boss room inside the path, so it is never a waypoint. Past 60 % of the time
+      // budget, annexes without a seal are skipped; seals never are.
+      if (!r.order) {
+        r.order = [...L.rooms.filter(x => x.kind === 'hall'), ...L.rooms.filter(x => x.kind === 'miniboss' || x.kind === 'side')];
+        if ((L.seals?.length ?? 0) !== (dg.def.rules?.seals ?? 0)) console.warn(`bot: seals ${L.seals?.length ?? 0}/${dg.def.rules?.seals ?? 0}, partial placement`);
+      }
+      const late = t - r.inAt > 0.6 * DUN_MAX_MS, sealRoom = x => sealsLeft().some(sl => sl.room === x.id);
+      r.oi ??= 0;
+      while (r.oi < r.order.length && (dist(me, { x: r.order[r.oi].cx, z: r.order[r.oi].cz }) < 5 || (late && r.order[r.oi].kind !== 'hall' && !sealRoom(r.order[r.oi])))) r.oi++;
+      r.room = r.oi + 1;
+      if (r.oi < r.order.length) {
+        const room = r.order[r.oi];
+        st.last = `donjon : salle ${r.oi + 1}/${r.order.length} (${room.kind})`;
+        return travel({ x: room.cx, z: room.cz }, 'dungeon');
+      }
+      const sl = sealsLeft().sort((a, b) => dist(me, a) - dist(me, b))[0];
+      if (sl) { st.last = `donjon : sceau ${sealsLeft().length} restant(s)`; return travel({ x: sl.x, z: sl.z }, 'dungeon'); }
+      st.last = 'donjon : boss';
+      return travel(L.boss, 'dungeon');
     }
     if (r.phase === 'coffre') {
       st.last = 'donjon : ouvre le coffre';
+      // Server range is tighter than the client prompt (4.4 m): each unanswered request walks 0.5 m closer.
       if (dist(me, L.chest) > 3.5) return travel(L.chest, 'dungeon');
-      if (t - (st.dunSendAt ?? 0) > 2000) { st.dunSendAt = t; g.send({ t: 'dungeon', a: 'chest' }); }
+      if (t - (st.dunSendAt ?? 0) > 2000) { st.dunSendAt = t; r.chestTries = (r.chestTries ?? 0) + 1; g.send({ t: 'dungeon', a: 'chest' }); }
       return [0, 0];
     }
     // Leave works anywhere out of combat, or at the exit/portal even in combat.
@@ -1283,6 +1586,7 @@
   const potionPrice = () => 15 + g.level * 5;
   const lowPotions = () => g.char.potions < 3 && g.char.gold >= potionPrice() * 4;
   function wantsShop() {
+    if (grouped() && !(g.char.bag.filter(Boolean).length >= g.char.bag.length || g.char.potions === 0)) return false;
     return (bagFull() || contractReady() || lowPotions()) && dist(g.sim, BERTRAND) < 200;
   }
   // Open a merchant through its dialogue, as the client does: `talk`, then `say` the choice tagged 'trade'
@@ -1381,27 +1685,38 @@
     // Active danger spots are walls, except the ones holding the start or the goal.
     const t = Date.now(), spots = ad.spots.filter(s => t < s.until && dist(s, from) > s.r && dist(s, to) > s.r);
     const open = [[h(sx, sz), 0, sx, sz]], came = new Map([[key(sx, sz), null]]), cost = new Map([[key(sx, sz), 0]]);
-    let n = 0;
+    // Binary min-heap on f (the old linear scan cost O(n^2) on long trips).
+    const push = e => { open.push(e); for (let i = open.length - 1; i > 0;) { const p = (i - 1) >> 1; if (open[p][0] <= open[i][0]) break; [open[p], open[i]] = [open[i], open[p]]; i = p; } };
+    const pop = () => {
+      const top = open[0], last = open.pop();
+      if (open.length) { open[0] = last; for (let i = 0; ;) { const l = 2 * i + 1, r = l + 1; let m = i;
+        if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r;
+        if (m === i) break; [open[m], open[i]] = [open[i], open[m]]; i = m; } }
+      return top;
+    };
+    const route = (x, z) => {
+      const pts = []; let k = key(x, z), p = [x, z];
+      while (p) { pts.push({ x: p[0], z: p[1] }); p = came.get(k); k = p && key(p[0], p[1]); }
+      pts.reverse();
+      return pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1);
+    };
+    let n = 0, best = [h(sx, sz), sx, sz];
     while (open.length && n++ < MAX_NODES) {
-      let bi = 0;
-      for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
-      const [, c, x, z] = open[bi]; open[bi] = open[open.length - 1]; open.pop();
+      const [, c, x, z] = pop();
       if (c > cost.get(key(x, z))) continue;
-      if (Math.abs(x - tx) <= 1 && Math.abs(z - tz) <= 1) {
-        const pts = []; let k = key(x, z), p = [x, z];
-        while (p) { pts.push({ x: p[0], z: p[1] }); p = came.get(k); k = p && key(p[0], p[1]); }
-        pts.reverse();
-        return pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1);
-      }
+      if (h(x, z) < best[0]) best = [h(x, z), x, z];
+      if (Math.abs(x - tx) <= 1 && Math.abs(z - tz) <= 1) return route(x, z);
       for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
         const nx = x + dx, nz = z + dz, nk = key(nx, nz);
         if (solid(nx, nz) || spots.some(s => Math.hypot(nx - s.x, nz - s.z) < s.r)) continue;
         if (dx && dz && (solid(x + dx, z) || solid(x, z + dz))) continue;
         const nc = c + (dx && dz ? 1.414 : 1);
-        if (nc < (cost.get(nk) ?? Infinity)) { cost.set(nk, nc); came.set(nk, [x, z]); open.push([nc + h(nx, nz), nc, nx, nz]); }
+        if (nc < (cost.get(nk) ?? Infinity)) { cost.set(nk, nc); came.set(nk, [x, z]); push([nc + h(nx, nz), nc, nx, nz]); }
       }
     }
-    return null;
+    // Budget spent or goal walled off: walk to the explored cell closest to the goal (a straight line hits walls);
+    // travelPath replans from there once progress stops.
+    return best[1] === sx && best[2] === sz ? null : route(best[1], best[2]);
   }
 
   // Waystones (client table `Sd`): awakened by walking past, travel between awakened ones out of combat,
@@ -1466,7 +1781,7 @@
   }
   // Bind to the awakened stone closest to the farm zone when we walk past it.
   function maybeBind() {
-    if (!st.home || now() - (st.bindAt ?? 0) < 10000) return;
+    if (grouped() || !st.home || now() - (st.bindAt ?? 0) < 10000) return;
     const w = nearestWay(st.home, awake());
     if (w && g.char.bound !== w.id && dist(g.sim, w) < 3) { st.bindAt = now(); g.send({ t: 'bind', w: w.id }); st.binds = (st.binds ?? 0) + 1; }
   }
@@ -1479,9 +1794,12 @@
   // One path cache per caller (key), so alternating callers never recompute each other's path.
   function travelPath(goal, key = 'goal') {
     const me = g.sim, navs = st.navs ??= {};
+    st.trav = { goal, key, n: st.tickN };
     const nav = navs[key];
-    if (!nav || dist(nav.goal, goal) > 2 || now() - nav.progressAt > 2000) {
-      const pts = findPath(me, goal);
+    const partEnd = nav && !nav.failed && dist(me, nav.pts.at(-1)) < 1.5 && dist(nav.pts.at(-1), goal) > 2; // partial path walked
+    if (!nav || dist(nav.goal, goal) > 2 || now() - nav.progressAt > 2000 || partEnd) {
+      let pts = findPath(me, goal);
+      if (pts && dist(pts.at(-1), goal) > 2 && dist(pts.at(-1), me) < 1.5) pts = null; // no closer cell reachable
       navs[key] = { goal, pts: pts ?? [goal], i: 0, progressAt: now(), best: Infinity, failed: !pts };
     }
     const p = navs[key];
@@ -1505,7 +1823,7 @@
 
   // Goal layer: re-scored every 0.5 s with inertia and minimum durations (hysteresis),
   // executed every tick. Reflexes (telegraph dodge, potion, danger retreat) bypass it.
-  const GOAL_MIN_MS = { fight: 1500, shop: 60000, talk: 30000, loot: 6000, dungeon: 2000, explore: 2000, farm: 2000 };
+  const GOAL_MIN_MS = { fight: 1500, shop: 60000, talk: 30000, loot: 6000, dungeon: 2000, explore: 2000, follow: 1000, farm: 2000 };
   const INERTIA = 0.25;
   function chooseGoal(c) {
     const t = now(), cur = st.goal;
@@ -1524,8 +1842,10 @@
       shop: st.shopDone === false && wantsShop() ? (g.char.potions <= 1 && g.char.gold >= potionPrice() * 4 ? 1.2 : 0.8) : 0,
       talk: talkScore(c.quest),
       loot: c.drop ? lootScore(c.drop) : 0,
-      dungeon: g.dungeon || armDoor() ? 0.65 : 0,
-      explore: c.quest?.type === 'explore' && c.quest.x != null && (c.quest.minLevel ?? 1) <= g.level ? 0.6 : 0,
+      // Grouped: no dungeon run of our own, only our chest once the boss is down.
+      dungeon: grouped() ? (g.dungeon && g.dstate?.boss && !g.dstate.opened ? 0.65 : 0) : g.dungeon || armDoor() ? 0.65 : 0,
+      explore: !grouped() && c.quest?.type === 'explore' && c.quest.x != null && (c.quest.minLevel ?? 1) <= g.level ? 0.6 : 0,
+      follow: needFollow() ? 0.7 : 0,
       farm: 0.2,
     };
     if (cur && !goalDone(cur, c)) score[cur] += INERTIA;
@@ -1540,7 +1860,7 @@
   // Talk value: learned quest reward over trip (waystone aware) plus talk time, plus a whole quest for a new one,
   // as a goal score relative to farming (0.2 at our measured xp/s), kept below fighting a near target.
   function talkScore(q) {
-    if (!(q?.type === 'talk' && q.npc && q.x != null) || dist(g.sim, q) >= 250) return 0;
+    if (grouped() || !(q?.type === 'talk' && q.npc && q.x != null) || dist(g.sim, q) >= 250) return 0;
     const sec = tripLen(g.sim, q) / PLAYER_SPEED + ad.qx.talk / 1000 + (/^Prendre/.test(q.label) ? ad.qx.dur / 1000 : 0);
     return Math.min(0.9, 0.2 * questReward() / sec / Math.max(1e-6, xpps()));
   }
@@ -1551,6 +1871,7 @@
     if (goal === 'loot') return !c.drop;
     if (goal === 'dungeon') return !g.dungeon && !armDoor();
     if (goal === 'explore') return c.quest?.type !== 'explore';
+    if (goal === 'follow') return !needFollow();
     return false;
   }
 
@@ -1561,7 +1882,9 @@
     if (!st.stuckRef || !moving) st.stuckRef = { x: me.x, z: me.z, at: t };
     else if (dist(me, st.stuckRef) > 1.5) st.stuckRef = { x: me.x, z: me.z, at: t };
     else if (t - st.stuckRef.at > 3000) {
-      const side = Math.random() < 0.5 ? 1 : -1;
+      const side = Math.random() < 0.5 ? 1 : -1, ml = Math.hypot(move[0], move[1]);
+      // The cells we pushed into are blocked for the planner (see markBlocked).
+      if (dist(me, st.stuckRef) < 0.5) for (const d of [1, 1.7]) markBlocked(me.x + move[0] / ml * d, me.z + move[1] / ml * d);
       st.sidestep = { until: t + 700, dir: [-move[1] * side, move[0] * side] };
       st.navs = {}; st.wayPlans = {}; st.stuckRef = { x: me.x, z: me.z, at: t }; st.unsticks = (st.unsticks ?? 0) + 1;
     }
@@ -1587,9 +1910,41 @@
     jlog(ev, { kills: st.kills, dun: st.dun ? { id: st.dun.id, phase: st.dun.phase, room: st.dun.room } : undefined,
       retreat: st.retreat?.why, mobs: monsters().filter(m => dist(m.pos, g.sim) < 15).map(m => `${m.def?.kind}${m.level}${m.elite ? 'E' : ''}`).slice(0, 8) });
   }
+  // Point at arc length len along the current path of key, or null when the path is shorter or unknown.
+  function pathPoint(key, len) {
+    const nav = st.navs?.[key];
+    if (!nav || nav.failed) return null;
+    let prev = g.sim, acc = 0;
+    for (let i = nav.i; i < nav.pts.length; i++) {
+      const p = nav.pts[i], seg = dist(prev, p);
+      if (seg > 0 && acc + seg >= len) { const f = (len - acc) / seg; return { x: prev.x + (p.x - prev.x) * f, z: prev.z + (p.z - prev.z) * f }; }
+      acc += seg; prev = p;
+    }
+    return null;
+  }
+  // Reaper travel legs (REAPER.md "Trajet"): a pass (lands 1.6 m past the cursor) aimed 7.4 m down the path, else the
+  // spectral rush aimed 10 m down it, when the line is wall free, no monster waits at the landing and the goal is > 10 m.
+  // No rush in the last 3 s before a waystone or a dungeon door: it resets outOfCombat, the pass does not.
+  function travelMobility(d) {
+    const tr = st.trav, me = g.sim;
+    if (!tr || tr.n !== st.tickN || d.roll || d.slots.length || tr.key === 'fight' || tr.key === 'loot' || Math.hypot(d.move[0], d.move[1]) < 0.5) return;
+    const left = dist(me, tr.goal);
+    if (left <= 10) return;
+    const free = (p, over) => {
+      const l = dist(me, p), ux = (p.x - me.x) / l, uz = (p.z - me.z) / l;
+      for (let s = 0.5; s <= l + over; s += 0.5) if (solid(me.x + ux * s, me.z + uz * s)) return false;
+      return ![...g.entities.visibleMonsters()].some(m => !m.dead && m.hp > 0 && dist(m.pos, { x: me.x + ux * (l + over), z: me.z + uz * (l + over) }) < 6);
+    };
+    const p1 = pathPoint(tr.key, 7.4);
+    if (p1 && rollReady() && free(p1, 1.6)) { st.rollAt = now(); d.roll = true; d.aim = p1; st.passes = (st.passes ?? 0) + 1; return; }
+    const gate = (tr.key.startsWith('way:') || (tr.key === 'dungeon' && !g.dungeon)) && left < 3 * curSheet().vt;
+    const p2 = !gate && g.char.bar.includes('souldash') && ready('souldash') ? pathPoint(tr.key, 10) : null;
+    if (p2 && free(p2, 0)) { d.slots = [g.char.bar.indexOf('souldash')]; d.aim = p2; st.rushes = (st.rushes ?? 0) + 1; }
+  }
   function decide() {
     const d = decideRaw();
     if (SHAMAN) shForms(d);
+    if (REAPER) travelMobility(d);
     d.move = unstick(d.move);
     try { journalTick(); } catch {}
     return d;
@@ -1632,10 +1987,19 @@
   function decideRaw() {
     const me = g.sim, hpPct = g.hp / g.life;
     // Left an instance (run over, bail or death): it stays open ad.exp.ms from now.
+    if (ad.zLvl !== g.level) { if (ad.zLvl != null) learnFall(); ad.zLvl = g.level; }
     const dunId = g.dungeon?.def.id ?? null;
     if (st.dunIn && st.dunIn !== dunId) { ad.dunOpen = ad.dunOpen.filter(o => o.id !== st.dunIn && Date.now() - o.at < ad.exp.ms).concat({ id: st.dunIn, at: Date.now() }); saveAd(); }
     st.dunIn = dunId;
-    if (g.dungeon) { st.home = { x: me.x, z: me.z }; st.zone = 'donjon : ' + g.dungeon.def.name; LEASH = 30; }
+    const lead = grouped() ? leader() : null;
+    if (lead) {
+      // Grouped: home is the leader (in its dungeon too), no zone pick, no quest area.
+      if (sameMap(lead)) st.home = leaderPos(lead); else st.home ??= { x: me.x, z: me.z };
+      LEASH = grp.band; st.zone = 'groupe : ' + lead.n;
+      for (const p of g.party) if (p.dead && !grp.deadSeen?.has(p.id) && p.id !== g.meId) { (grp.deadSeen ??= new Set()).add(p.id); if (dist(me, p) > grp.band) grp.band = 10; }
+      for (const id of grp.deadSeen ?? []) if (!g.party.find(p => p.id === id)?.dead) grp.deadSeen.delete(id);
+    }
+    else if (g.dungeon) { st.home = { x: me.x, z: me.z }; st.zone = 'donjon : ' + g.dungeon.def.name; LEASH = 30; }
     else if (!st.pinned) {
       // The quest area narrows the home only when the arm holding it won the UCB (value, deaths included).
       const z = pickZone(), q = st.quest;
@@ -1661,6 +2025,8 @@
     if (tick - (st.hpAt ?? 0) > 2000) { st.hpDrop = hpPct < (st.hpPrev ?? hpPct) - 0.03; st.hpPrev = hpPct; st.hpAt = tick; }
     let move = [0, 0], aim = null, slots = [], roll = false;
     if (SHAMAN) shTick();
+    if (REAPER) rpTick();
+    st.tickN = (st.tickN ?? 0) + 1;
 
     // --- reflexes
     // Local cooldown guard: g.potionCd only updates after the server answers.
@@ -1674,14 +2040,21 @@
       roll = rollReady();
       if (roll) { st.rollAt = now(); st.teleDodges = (st.teleDodges ?? 0) + 1; }
       st.last = 'esquive une attaque annoncée';
-      return { move: steer(...esc), aim: null, slots: [], roll };
+      const mv = steer(...esc);
+      return { move: mv, aim: REAPER && roll ? rollAim(mv) : null, slots: [], roll };
     }
     const ret = retreatTick(me);
     if (ret) {
       const t = threat(me);
       roll = !!t && rollReady();
       if (roll) st.rollAt = now();
-      return { move: ret, aim: null, slots: [], roll };
+      return { move: ret, aim: REAPER && roll ? rollAim(ret) : null, slots: [], roll };
+    }
+
+    // Enraged boss (or its timer nearly out): run for the exit, no fighting on the way.
+    if (g.dungeon && st.dun && !grouped()) {
+      enrageWatch();
+      if (st.dun.flee) { st.reflex = 'fuite (boss enragé)'; return { move: dungeonRun(), aim: null, slots: [], roll: false }; }
     }
 
     // --- goal selection
@@ -1699,8 +2072,8 @@
     // Allowed targets: what is on us (or within 6 m) plus the planned pull, ranked by Smith's rule.
     // Anchored fight (attacked at a dungeon door or a waystone): only attackers, no pull, so nothing else gets pulled.
     const anchor = st.anchor && now() - st.anchor.at < 1500 ? st.anchor : null;
-    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || plan.ids.has(o.m.id))
-      .map(o => ({ ...o, s: smith(o, kite) })).sort((a, b) => b.s - a.s);
+    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || plan.ids.has(o.m.id) || (g.dungeon && isSeal(o.m) && o.d < 25) || leadTgt(o.m) || onMate(o.m))
+      .filter((o, _, all) => allowedDun(o, all)).map(o => ({ ...o, s: smith(o, kite) * dunMul(o.m) })).sort((a, b) => b.s - a.s);
     st.top = ranked.slice(0, 3).map(o => `${o.m.def?.kind}${o.m.level} ${o.s.toFixed(2)}`);
     const tgtO = ranked[0];
     const quest = questStep();
@@ -1719,6 +2092,7 @@
     if (doorFight) { const dr = armDoor(); if (dr) st.anchor = { x: dr.at.x, z: dr.at.z, at: now() }; }
     if (goal === 'dungeon' && !doorFight) return { move: dungeonRun(), aim: null, slots: [], roll: false };
     if (goal === 'explore') { st.last = `quête : explore ${quest.label}`; return { move: travel(quest, 'quest'), aim: null, slots: [], roll: false }; }
+    if (goal === 'follow') return { move: followRun(), aim: null, slots: [], roll: false };
 
     if ((goal === 'fight' || doorFight) && target) {
       const d = tgtO.d;
@@ -1742,18 +2116,21 @@
         if (pick.toggle) st.formReq = { id: pick.id, slot: pick.slot, from: g.sim.form, at: now() };
       }
       const t = threat(me);
-      if (t && rollReady()) {
+      // Reaper: strikes are taken in the scythe band; it dodges only telegraphs, or when low (survival below).
+      if (t && !REAPER && rollReady()) {
         st.rollAt = now();
         roll = true;
         move = steer(me.x - t.pos.x, me.z - t.pos.z);
       }
-      // Shaman survival: low hp with an attacker in contact and no bear roar available: Raven flight away.
-      const close = SHAMAN && hpPct < 0.4 && pick?.id !== 'bearform' ? attackers.filter(o => o.d < 3) : [];
+      // Survival: low hp with an attacker in contact and no bear roar (shaman) or spectral form (reaper): roll away.
+      const close = hpPct < 0.4 && (SHAMAN && pick?.id !== 'bearform' || REAPER && pick?.id !== 'wraithform' && !wraithLeft()) ? attackers.filter(o => o.d < 3) : [];
       if (!roll && close.length && rollReady()) {
         const c = centroid(close); st.rollAt = now(); roll = true; move = steer(me.x - c.x, me.z - c.z);
       }
+      if (REAPER && roll) { aim = rollAim(move); slots.length = 0; }
       // Shaman: in wolf/bear slot 0 is a beast click, and nothing while a shift is cast.
-      if (!slots.length && (SHAMAN ? d < 12 && (g.sim.form === 0 || g.sim.form === 3) && !/form$/.test(g.sim.action?.type ?? '') : d < 13)) slots.push(0);
+      if (!slots.length && !roll && (REAPER ? d >= 1 && d <= (sk('reap').range ?? 4.6)
+        : SHAMAN ? d < 12 && (g.sim.form === 0 || g.sim.form === 3) && !/form$/.test(g.sim.action?.type ?? '') : d < 13)) slots.push(0);
     } else {
       // Farm: head for the nearest monster of the planned pull, otherwise wander across the zone.
       const lure = mobs.find(o => plan.ids.has(o.m.id))?.m;
@@ -1761,7 +2138,7 @@
         st.last = 'va chercher des ennemis';
         return { move: travelPath({ x: lure.pos.x, z: lure.pos.z }, 'lure'), aim: null, slots: [], roll: false };
       }
-      const bindW = nearestWay(st.home, awake());
+      const bindW = grouped() ? null : nearestWay(st.home, awake());
       if (bindW && g.char.bound !== bindW.id && dist(me, bindW) < 40 && now() - (st.bindAt ?? 0) > 10000) {
         st.last = `va se lier à ${bindW.id}`;
         return { move: travelPath({ x: bindW.x, z: bindW.z }, 'bind'), aim: null, slots: [], roll: false };
@@ -1778,6 +2155,9 @@
       move = travel(st.wander, 'wander');
       st.last = dist(me, st.home) > LEASH ? 'retour zone' : 'patrouille';
     }
+    // Corridor traps: never stand still within 2 m of one (its telegraph stays the real dodge).
+    const trap = g.dungeon && !roll && !move[0] && !move[1] ? (g.dungeon.layout.traps ?? []).find(p => dist(me, p) < 2) : null;
+    if (trap) move = steer(me.x - trap.x, me.z - trap.z);
     // Anchored: hold within 5 m of the anchor instead of kiting away (dodge rolls still allowed).
     if (anchor && !roll) {
       const da = dist(me, anchor);
@@ -1832,12 +2212,12 @@
   g.onMessage = msg => {
     if (st.on && msg?.t === 's') for (const ev of msg.ev ?? []) {
       if (ev.e === 'kill') {
-        st.kills++; ad.tot.kills = (ad.tot.kills ?? 0) + 1;
+        st.kills++; st.killAt = now(); ad.tot.kills = (ad.tot.kills ?? 0) + 1;
         const zs = zoneStat(st.zone ?? 'fixe'); zs.kills = (zs.kills ?? 0) + 1;
         const p = st.deathPend; // death cost sample: xp lost plus xp not earned until this first kill
         if (p?.lost != null) { const v = p.lost + xpps() * (now() - p.at) / 1000; ad.deathCost = ema(ad.deathCost ?? v, v, ad.deathN = (ad.deathN ?? 0) + 1); st.deathPend = null; }
       }
-      else if (ev.e === 'hit') onHit(ev);
+      else if (ev.e === 'hit') { onHit(ev); groupHit(ev); }
       else if (ev.e === 'undrop' && ev.by === g.meId && g.drops.drops.get(ev.id)?.kind === 'globe') st.globePick = { hp: g.hp, at: now() };
       else if (ev.e === 'xp') {
         const a = ev.a ?? 0, r = ad.ab.run;
@@ -1847,7 +2227,10 @@
         st.lastXpEv = { a, at: now() };
       }
       else if (ev.e === 'tele') addTele(ev);
-      else if (ev.e === 'toast' && typeof ev.m === 'string') expToast(ev.m);
+      else if (ev.e === 'toast' && typeof ev.m === 'string') {
+        expToast(ev.m);
+        if (/butin revient à ceux qui ont abattu/i.test(ev.m) && st.dun) { st.dun.chestDenied = (st.dun.chestDenied ?? 0) + 1; jlog('coffre refusé', { n: st.dun.chestDenied }); }
+      }
       else if (ev.e === 'quest') {
         st.questEventAt = now(); st.quests = (st.quests ?? 0) + 1; st.lastQuest = `${ev.q}:${ev.k}`;
         if (ev.k === 'start') (st.qStart ??= {})[ev.q] = now();
@@ -1871,9 +2254,10 @@
     + 'background:rgba(12,14,16,.82);color:#e6e2d6;font:12px/1.45 ui-monospace,Menlo,monospace;'
     + 'border:1px solid rgba(230,226,214,.25);border-radius:6px;pointer-events:none;white-space:pre-wrap';
   document.body.appendChild(hud);
-  const GOAL_FR = { fight: 'combat', shop: 'boutique', talk: 'quête PNJ', loot: 'butin', dungeon: 'donjon', explore: 'exploration', farm: 'farm' };
+  const GOAL_FR = { fight: 'combat', shop: 'boutique', talk: 'quête PNJ', loot: 'butin', dungeon: 'donjon', explore: 'exploration', follow: 'suivre', farm: 'farm' };
   const bar10 = v => '█'.repeat(Math.round(Math.min(1.75, Math.max(0, v)) / 1.75 * 10)).padEnd(10, '·');
   const esc = t => String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const rpHud = () => `palier ${'0 I II III IV'.split(' ')[soulTier()]}  seuil ${Math.round(trepasTh() * 100)} %  forme spectrale ${Math.round(wraithLeft())}s`;
   const shHud = () => `forme ${FORM_FR[g.sim.form] ?? g.sim.form}  harmonie ${'0 I II III'.split(' ')[harmony()]}  totem ${Math.round(totemLeft())}s`;
   const hudTimer = setInterval(() => {
     if (SHAMAN && !st.on) shTick(); // keep form/totem tracking while paused (manual play)
@@ -1885,14 +2269,14 @@
       return `${on ? '▶' : ' '} ${GOAL_FR[k].padEnd(10)} ${bar10(sc[k] ?? 0)} ${(sc[k] ?? 0).toFixed(2)}${on && left ? `  min ${left}s` : ''}`;
     }).join('\n');
     const hp = g.life ? Math.round(g.hp / g.life * 100) : 0;
-    hud.innerHTML = `<b style="color:#d9b26f">BOT ${st.on ? 'ON' : 'OFF'}</b>  niv ${g.level}  PV ${hp}%  potions ${g.char.potions}  ${SHAMAN ? 'esprit' : 'ess'} ${Math.round(g.sim.fury ?? 0)}\n`
+    hud.innerHTML = `<b style="color:#d9b26f">BOT ${st.on ? 'ON' : 'OFF'}</b>  niv ${g.level}  PV ${hp}%  potions ${g.char.potions}  ${SHAMAN ? 'esprit' : REAPER ? 'âmes' : 'ess'} ${Math.round(g.sim.fury ?? 0)}\n`
       + `réflexe : ${esc(st.reflex ?? '-')}\n`
       + `<span style="color:#8fb3a8">objectifs (inertie +${INERTIA})</span>\n${esc(rows)}\n`
       + `action : <b>${esc(st.last)}</b>\n`
       + `cible  : ${esc(st.target ?? '-')}\n`
       + `zone   : ${esc(st.zone ?? '-')}\n`
       + `quête  : ${esc(st.quest?.label ?? '-')}\n`
-      + `touches: ${esc([...st.pressed].join(' ') || '-')}  ${SHAMAN ? shHud() : `squelettes ${servantCount()}/${skelCap()}`}\n`
+      + `touches: ${esc([...st.pressed].join(' ') || '-')}  ${SHAMAN ? shHud() : REAPER ? rpHud() : `squelettes ${servantCount()}/${skelCap()}`}\n`
       + `<span style="color:#8fb3a8">modèle</span>\n`
       + `stratégie ${esc(st.strat ?? '-')}  pull ${st.plan?.k ?? 0} grp (options ${st.plan?.opts.length ?? 0})  marge ${ad.margin.toFixed(2)}\n`
       + `smith  : ${esc((st.top ?? []).join(' | ') || '-')}\n`
@@ -1936,6 +2320,15 @@
       navs: Object.fromEntries(Object.entries(st.navs ?? {}).map(([k, n]) => [k, { goal: n.goal, pts: n.pts, i: n.i, at: n.progressAt }])),
       home: st.home, leash: LEASH, zone: st.zone ?? null, goal: st.goal ?? null, wander: st.wander, target: st.tgtPos ?? null,
       dangers: ad.spots.filter(x => Date.now() < x.until).map(x => ({ x: x.x, z: x.z, r: x.r })), ways: WAYS, zones: ZONES,
+      // Dry view of the class logic (no input sent): skill pick on what is around, readiness, model numbers.
+      dry: (() => { try {
+        const mobs = monsters().map(m => ({ m, d: dist(m.pos, g.sim) })).sort((a, b) => a.d - b.d), attackers = mobs.filter(engagedOnUs);
+        const pick = mobs.length ? chooseSkill({ mobs, me: g.sim, attackers, hpPct: g.hp / g.life, hpDrop: false, ess: g.sim.fury ?? 0 }) : null;
+        return { pick: pick && { id: pick.id, slot: pick.slot, ev: pick.ev }, mobs: mobs.slice(0, 5).map(o => `${o.m.def?.kind}${o.m.level} ${o.d.toFixed(1)}m`),
+          ready: Object.fromEntries([...g.char.bar.filter(Boolean), 'roll'].map(id => [id, ready(id)])), rollReady: rollReady(),
+          sheet: (s => ({ hit: Math.round(s.hit), dps: Math.round(s.dps), ehp: Math.round(s.ehp), vt: +s.vt.toFixed(2) }))(sheet()), myDps: Math.round(myDps()),
+          castReap: +castSec(BASE_SKILLS[0]).toFixed(2), strat: chooseStrat(mobs.slice(0, 3)), nextTalent: BUILD?.talents[Object.values(g.char.ch.tree ?? {}).reduce((x, n) => x + n, 0)]?.id ?? null };
+      } catch (e) { return 'erreur ' + e.message; } })(),
     }),
     status: () => ({
       on: st.on, cls: g.char.ch.cls, lvl: g.char.ch.level, xp: g.char.ch.xp,
@@ -1951,8 +2344,9 @@
       ab: ad.ab.run ? { k: ad.ab.run.k, side: ad.ab.run.side, val: ad.ab.run.val } : null, abLast: ad.ab.last ?? null,
       enemy: Object.fromEntries(Object.entries(ad.enemy).map(([k, v]) => [k, `${v.dps.toFixed(1)} dps (${v.n})`])),
       pullStats: Object.fromEntries(Object.entries(ad.pull).map(([k, v]) => [k, `${(v.xp / Math.max(1, v.ms) * 1000).toFixed(2)} xp/s (${v.n})`])),
-      zoneUcb: (st.zoneArms ?? []).map(a => `${a.z.name} ${Math.round(a.mean)}`),
-      xph: Object.fromEntries(Object.entries(ad.zones).map(([k, v]) => [k, `${Math.round(v.xp / Math.max(v.ms, 60000) * 3600000)} xp/h, ${v.deaths} morts`])),
+      zoneUcb: (st.zoneArms ?? []).map(a => `${a.z.name} L${a.a} ${Math.round(a.mean)} n${a.n.toFixed(1)}`), ladder: st.ladder ?? [], fall: +fall().toFixed(3),
+      xph: Object.fromEntries(Object.entries(ad.zones).map(([k, v]) => { const b = v.lv?.[g.level]; return [k, b ? `${Math.round(b.xp / Math.max(b.ms, 60000) * 3600000)} xp/h, ${b.deaths} morts (niv ${g.level})` : '-']; })),
+      group: grouped() && grp.leadId != null ? (l => l && { name: l.n, lvl: l.lvl })(g.party.find(p => p.id === grp.leadId)) : null,
       expeditions: { open: openExp(), max: ad.exp.max, min: ad.exp.ms / 60000 },
       dungeon: st.dun ? { id: st.dun.id, phase: st.dun.phase, room: st.dun.room, deaths: st.dun.deaths, min: Math.round((now() - st.dun.at) / 60000) } : null,
       dangers: ad.spots.map(x => `${x.kind} ${Math.round((x.until - Date.now()) / 1000)}s r${Math.round(x.r)}`), avoid: ad.avoid,
@@ -1960,6 +2354,7 @@
       quest: { frac: +ad.qx.frac.toFixed(3), rate: ad.qx.rate, talkMs: Math.round(ad.qx.talk), durMin: Math.round(ad.qx.dur / 60000) },
       deathCost: Math.round(deathCostXp()), sales: st.sales ?? [], fightsQueued: fights.length,
       zone: g.zoneName, farm: st.zone ?? 'fixe', pos: [Math.round(g.sim.x), Math.round(g.sim.z)], home: st.home,
+      ...(REAPER && { souls: Math.round(souls()), tier: soulTier(), trepas: +trepasTh().toFixed(2), wraith: Math.round(wraithLeft()), passes: st.passes ?? 0, rushes: st.rushes ?? 0 }),
       ...(SHAMAN && { spirit: Math.round(g.sim.fury ?? 0), form: FORM_FR[g.sim.form] ?? g.sim.form, harmony: harmony(), totem: Math.round(totemLeft()), combo: +Math.max(0, g.sim.comboTimer).toFixed(1) }),
     }),
   };
@@ -1976,6 +2371,12 @@
     const me = { dps: 50, hp: 300, potHeal: 100, potions: 3, potCd: 10, splash: 0.3, soak: 0.3, margin: 1.5 };
     if (!engage({ hp: 100, dps: 10, n: 2 }, me).ok) fail('engage small pack');
     if (engage({ hp: 2000, dps: 120, n: 8 }, me).ok) fail('engage deadly pack');
+    // Group leader: level gap first, ties to the real leader, hysteresis of 2 levels, dead members skipped.
+    const P = [{ id: 1, lvl: 25, x: 0, z: 0 }, { id: 2, lvl: 27, x: 0, z: 0, lead: 1 }, { id: 3, lvl: 23, x: 5, z: 0 }, { id: 4, lvl: 26, x: 0, z: 0, dead: 1 }];
+    if (pickLeader(P, 1, 25, { x: 0, z: 0 }, null)?.id !== 2) fail('leader tie by lead');
+    if (pickLeader([...P, { id: 5, lvl: 26, x: 0, z: 0 }], 1, 25, { x: 0, z: 0 }, 3)?.id !== 3) fail('leader hysteresis keep');
+    if (pickLeader([{ id: 1, lvl: 25 }, { id: 3, lvl: 20, x: 0, z: 0 }, { id: 5, lvl: 25, x: 0, z: 0 }], 1, 25, { x: 0, z: 0 }, 3)?.id !== 5) fail('leader hysteresis switch');
+    if (pickLeader([{ id: 1, lvl: 25 }], 1, 25, { x: 0, z: 0 }, null) !== null) fail('leader alone');
     // Being attacked preempts a non-fight goal still inside its min duration.
     const keep = { goal: st.goal, goalAt: st.goalAt, scoreAt: st.scoreAt, goals: st.goals };
     st.goal = 'shop'; st.goalAt = now(); st.scoreAt = now();
