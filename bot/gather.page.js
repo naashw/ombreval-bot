@@ -11,6 +11,8 @@
   const ad = (() => { try { return JSON.parse(localStorage.getItem(AD_KEY)) ?? {}; } catch { return {}; } })();
   // v2 migration: drop the doubling avoid timers and hour-long danger spots (risk is now a decaying cost).
   if ((ad.v ?? 1) < 2) { delete ad.spots; delete ad.avoid; delete ad.risk; ad.v = 2; }
+  if (ad.v < 3) { delete ad.tgtAdj; ad.v = 3; }
+  if (ad.v < 4) { delete ad.mdps; ad.v = 4; } // v4: dps exposure now counted at the same range as hit attribution // v3: target shifts only from real gathering at the target
   ad.dur ??= {}; ad.gdur ??= {}; ad.back ??= {}; ad.xp ??= {}; ad.leash ??= {};
   ad.area ??= {}; ad.aggro ??= {}; ad.mspd ??= {}; ad.mdps ??= {}; ad.chaseS ??= 15;
   ad.strike ??= [0, 0.5, 1].map(k => ({ k, ok: 0, n: 0 })); ad.rtt ??= 150; ad.bf ??= 0; ad.bfN ??= 0; ad.detour ??= 1.25; ad.wayCost ??= 25;
@@ -104,16 +106,19 @@
   // Area memory: trips n, attacked a, deaths d, all decaying with a 10 min half-life (never a ban).
   function area(id) {
     const a = ad.area[id] ??= { n: 0, a: 0, d: 0, t: Date.now() }, k = 0.5 ** ((Date.now() - a.t) / HALF_LIFE);
-    a.n *= k; a.a *= k; a.d *= k; a.t = Date.now();
+    a.c ??= 0; a.n *= k; a.a *= k; a.d *= k; a.c *= k; a.t = Date.now(); // c: summed cost (s) of attacks survived
     return a;
   }
   // Trip = one node visit; ends on gather end, retreat or death.
-  const tripHit = () => { const t = st.trip; if (t && !t.hit) { t.hit = true; area(t.z).a++; } };
+  const tripHit = () => { const t = st.trip; if (t && !t.hit) { t.hit = true; t.hpHit = g.hp; t.fightS = 0; area(t.z).a++; } };
   // A death after the trip ended (retreat) still counts against the area we died in.
   const tripEnd = death => {
     const t = st.trip;
     if (!t) { if (death) { area(zoneOf(g.sim).id).d++; saveAd(); } return; }
-    const a = area(t.z); a.n++; if (death) { if (!t.hit) a.a++; a.d++; } st.trip = null; saveAd();
+    st.modeTrips = (st.modeTrips ?? 0) + 1;
+    const a = area(t.z); a.n++;
+    if (t.hit && !death && !st.retreat) a.c += t.fightS + Math.max(0, t.hpHit - g.hp) / regen(); // attack fought off
+    if (death) { if (!t.hit) a.a++; a.d++; } st.trip = null; saveAd();
   };
   // Death cost: respawn, walk back from the bound stone, xp lost at the character's farming rate.
   const CHAR_XPS = () => ad.charXps ?? 0.5 + 0.3 * g.level; // learned while __bot levels us, prior guessed
@@ -140,7 +145,8 @@
     const pd0 = f ? (f.win ? 0.05 : near.every(m => mSpeed(m) < speed()) ? 0.2 : 0.6) : Math.min(1, g.life / Math.max(1, hp) / (1 + Math.exp(3 - (z.lvl[1] - g.level))));
     const pd = (A.d + 2 * pd0) / (A.a + 2);
     // Attack cost: a won fight costs its duration plus the hp to regenerate; else the learned cost of a chase.
-    return riskSec(pa, pd, deathSec(n), f?.win ? f.ttk + f.taken / regen() : ad.chaseS);
+    const prior = f?.win ? f.ttk + f.taken / regen() : ad.chaseS, hitS = (A.c + 2 * prior) / (A.a + 2);
+    return riskSec(pa, pd, deathSec(n), hitS);
   }
 
   // Threat: chasing or recently hitting us. Damage predicted over horizon H (what is left to do here):
@@ -168,7 +174,7 @@
       const k = m.def?.kind, d = dist(m.pos, me), was = mPrev.get(m.id);
       if (was && !CHASE_STATES.includes(was) && m.state === 'chase' && d < 25) { const e = ad.aggro[k] ??= { d: AGGRO_PRIOR, n: 0 }; e.d = ema(e.d, d, e.n++); }
       if (m.state === 'chase' && d < 30 && m.speedNow > 0.6 * (m.def?.speed ?? PLAYER_SPEED)) { const e = ad.mspd[k] ??= { v: m.speedNow, n: 0 }; e.v = ema(e.v, m.speedNow, e.n++); }
-      if (ATTACK_STATES.includes(m.state) && d < reachOf(m) + 0.5) dmgWin.exp[k] = (dmgWin.exp[k] ?? 0) + dt / 1000;
+      if ([...ATTACK_STATES, 'recover'].includes(m.state) && d < reachOf(m) + 3) dmgWin.exp[k] = (dmgWin.exp[k] ?? 0) + dt / 1000;
       mPrev.set(m.id, m.state);
     }
     if (mPrev.size > 300) mPrev.clear();
@@ -194,10 +200,10 @@
       out.push({ x: me.x + c * 20, z: me.z + s * 20 }, { x: me.x + c * 40, z: me.z + s * 40 });
     }
     for (const w of awake()) out.push(w);
-    return out.filter(p => !solid(p.x, p.z) && !idle.some(m => dist(m.pos, p) < aggroR(m.def?.kind)));
+    return out.filter(p => !solid(p.x, p.z) && zoneOf(p).lvl[0] <= g.level && !idle.some(m => dist(m.pos, p) < aggroR(m.def?.kind)));
   }
   function startRetreat(ms, why) {
-    if (!st.retreat) { st.retreats = (st.retreats ?? 0) + 1; st.retreat = { ids: new Map(), t0: now(), trip0: st.trip?.t0 ?? now(), hp0: g.hp, target: null, why }; tripHit(); tripEnd(false); }
+    if (!st.retreat) { st.retreats = (st.retreats ?? 0) + 1; st.retreat = { ids: new Map(), t0: now(), trip0: st.trip?.t0 ?? now(), hp0: g.hp, z: st.trip?.z ?? zoneOf(g.sim).id, target: null, why }; tripHit(); tripEnd(false); }
     const r = st.retreat;
     for (const m of ms) if (!r.ids.has(m.id)) r.ids.set(m.id, m.state);
   }
@@ -218,7 +224,10 @@
       chasers.push(m.pos); ms.push(m); vMax = Math.max(vMax, mSpeed(m));
     }
     // Chase cost: the whole wasted trip plus the hp lost, at the regen rate.
-    if (!chasers.length) { ad.chaseS = ema(ad.chaseS, (now() - r.trip0) / 1000 + Math.max(0, r.hp0 - g.hp) / regen(), 4); st.retreat = null; st.node = null; return null; }
+    if (!chasers.length) {
+      const c = (now() - r.trip0) / 1000 + Math.max(0, r.hp0 - g.hp) / regen();
+      ad.chaseS = ema(ad.chaseS, c, 4); area(r.z).c += c; st.retreat = null; st.node = null; return null;
+    }
     if (vMax >= speed() && fight(ms).win) { st.retreat = null; return null; } // can't outrun, can win: the fight branch takes over
     r.target = pickRetreat(me, chasers, retreatCands(me), r.target, vMax / speed());
     st.last = `repli (${r.why})`;
@@ -355,6 +364,10 @@
     }
     const p = navs[k];
     while (p.i < p.pts.length - 1 && dist(me, p.pts[p.i]) < 1.5) p.i++;
+    // After a roll we may be past waypoints: jump to the nearest one ahead if the next is in sight.
+    let jn = p.i;
+    for (let j = p.i + 1; j < Math.min(p.pts.length, p.i + 10); j++) if (dist(me, p.pts[j]) < dist(me, p.pts[jn])) jn = j;
+    if (jn > p.i && lineFree(me, p.pts[Math.min(jn + 1, p.pts.length - 1)])) p.i = Math.min(jn + 1, p.pts.length - 1);
     const wp = p.pts[p.i], d = dist(me, wp);
     if (d < p.best - 0.3 || p.i > (p.lastI ?? -1)) { p.best = d; p.lastI = p.i; p.progressAt = now(); }
     if (p.failed) { st.ahead = null; return steer(wp.x - me.x, wp.z - me.z); }
@@ -424,7 +437,7 @@
     st.pickAt = now();
     if (!best) { st.node = null; return null; }
     // Hysteresis: keep the current target unless the new one is 25 % better.
-    const cur = st.node && candidates().find(c => c.n.id === st.node.n.id);
+    const raw = st.node && candidates().find(c => c.n.id === st.node.n.id), cur = raw && refine(raw); // same estimate as best
     if (cur && st.node.n.id !== best.n.id && best.score < 1.25 * cur.score) return st.node;
     if (!st.node || st.node.n.id !== best.n.id) { st.req = null; st.sendAt = 0; }
     if (!st.trip) st.trip = { z: zoneOf(best.n).id, hit: false, t0: now() };
@@ -549,8 +562,11 @@
     const c = st.node;
     if (!c) { st.phase = 'idle'; st.last = 'aucun nœud accessible, attente'; return { move: [0, 0] }; }
     const n = c.n, goal = c.goal ?? approach(n), dn = dist(me, n);
-    if (dn > 2.3 && dist(me, goal) > 0.6) {
+    if (dn > 2.6 && dist(me, goal) > 0.6) { // gather reach 2.8 m
       st.phase = 'route'; st.sendAt = 0;
+      // Stuck next to the node (approach cell unreachable): try the far side.
+      if (dn > 5) st.nearAt = 0; else if (!st.nearAt) st.nearAt = tick;
+      else if (tick - st.nearAt > 4000) { c.goal = approach(n, { x: 2 * n.x - me.x, z: 2 * n.z - me.z }); st.navs = {}; st.nearAt = tick; }
       const move = travel(goal, 'node');
       st.last = st.last?.startsWith('pierre') || st.last?.startsWith('attend') ? st.last : `vers ${nodeName(n)} (${Math.round(dn)} m)`;
       // Dodge on straight legs: ready, far from the target, lookahead visible 7 m or more.
@@ -585,6 +601,12 @@
       st.spd = { x: me.x, z: me.z, at: t, trip: st.wayTrips };
     }
     st.prevPos = { x: me.x, z: me.z };
+    if (st.phase === 'fight' && st.trip?.hit) st.trip.fightS += (t - (st.fightT ?? t)) / 1000;
+    st.fightT = t;
+    // Passive regen: 6 s windows with no hit taken, no potion, hp below max.
+    const rw = st.regenW;
+    if (!rw || g.hp >= g.life || g.hp < rw.hp || now() - (st.potAt ?? -1e9) < 6000) st.regenW = { at: t, hp: g.hp };
+    else if (t - rw.at > 6000) { if (g.hp > rw.hp) { ad.regenN = (ad.regenN ?? 0) + 1; ad.regen = ema(ad.regen, (g.hp - rw.hp) / ((t - rw.at) / 1000), ad.regenN); } st.regenW = { at: t, hp: g.hp }; }
     // Gold rate: positive gold changes while on (shop spending excluded), over 60 s windows.
     const gold = g.char.gold ?? 0, gw = st.goldW ??= { at: t, sum: 0 };
     if (st.goldPrev != null && gold > st.goldPrev) gw.sum += gold - st.goldPrev;
@@ -628,7 +650,7 @@
     // Risk share of a cycle at or above target: too risky -> aim higher; safe below target -> aim lower.
     if (best) {
       const share = best.risk / (best.sec + best.wait + best.dur + best.risk), t = profTier(), a = ad.tgtAdj[t] ?? 0;
-      if (g.level >= target() && share > 0.5 && a < 6) ad.tgtAdj[t] = a + 1;
+      if (st.mode === 'récolte' && (st.modeTrips ?? 0) >= 5 && g.level >= target() && share > 0.5 && a < 6) { ad.tgtAdj[t] = a + 1; st.modeTrips = 0; }
       else if (g.level < target() && share < 0.1 && a > -4) ad.tgtAdj[t] = a - 1;
     }
     const mode = modePick({ hasBot: !!window.__bot, lvl: g.level, target: target(), rateNow, rateSafe, tLvlS, cur: st.mode });
@@ -637,7 +659,7 @@
     st.modeAt = now();
   }
   function setMode(mode) {
-    st.mode = mode; st.modeSwitches = (st.modeSwitches ?? 0) + 1; st.node = null; st.retreat = null; st.detour = null;
+    st.mode = mode; st.modeTrips = 0; st.modeSwitches = (st.modeSwitches ?? 0) + 1; st.node = null; st.retreat = null; st.detour = null;
     if (mode === 'XP') { setKeys([]); window.__botOpts = { ...(window.__botOpts ?? {}), autoTalents: true }; st.botByUs = true; try { window.__bot.start(); } catch { st.mode = 'récolte'; } }
     else if (st.botByUs) { try { window.__bot?.pause(); } catch {} st.botByUs = false; st.botOn = false; }
     g.ui.toast?.(`Bot métiers : mode ${st.mode}`);
@@ -645,7 +667,7 @@
   // While leveling: take over for a cheap node close by when nothing is on us, then hand back.
   function coordTick() {
     if (!st.on) return;
-    if (!st.modeAt || now() - st.modeAt > MODE_EVERY) modeEval();
+    if (!st.modeAt || now() - st.modeAt > MODE_EVERY || (st.mode === 'XP' && g.level >= target())) modeEval();
     if (st.mode !== 'XP') return;
     if (!window.__bot) { setMode('récolte'); return; }
     const t = now(), xp = cumXp(), w = st.xpW;
@@ -653,7 +675,7 @@
     const d = st.detour;
     if (d && (t > d.until || st.lastEnd?.at > d.at || g.sim.dead)) { st.detour = null; st.node = null; try { window.__bot.start(); } catch {} return; }
     if (d || g.sim.dead || g.hp < 0.6 * g.life || threats(g.sim).length) { if (!d && !botOn()) try { window.__bot.start(); } catch {} return; }
-    const c = candidates().find(c => c.sec < 4 && c.wait === 0 && c.risk < 3);
+    const c = candidates().find(c => c.sec < 8 && c.wait === 0 && c.risk < 4);
     if (!c) { if (!botOn()) try { window.__bot.start(); } catch {} return; }
     try { window.__bot.pause(); } catch {}
     st.detour = { id: c.n.id, at: t, until: t + 20000 }; st.node = c; st.req = null; st.sendAt = 0; st.detours = (st.detours ?? 0) + 1;
@@ -702,6 +724,7 @@
     const t = msg?.t;
     if (t === 's') for (const ev of msg.ev ?? []) {
       if (ev.e === 'tele') addTele(ev);
+      else if (ev.e === 'death' && ev.lost != null) { const x = ev.lost + (g.char.ch.xp ?? 0); if (x > 0) { ad.lossN = (ad.lossN ?? 0) + 1; ad.lossK = ema(ad.lossK, ev.lost / x, ad.lossN); } }
       else if (ev.e === 'hit' && ev.id === g.meId) {
         // Hits on us carry no source: blame the nearest monster in an attack phase.
         const m = ev.s != null ? g.entities.monsters.get(ev.s)?.view : live().filter(x => [...ATTACK_STATES, 'recover'].includes(x.state) && dist(x.pos, g.sim) < reachOf(x) + 3)
@@ -725,7 +748,6 @@
       const a = ad.strike[st.strike.arm]; a.n++; if (msg.ok) a.ok++;
       st.strike = null; saveAd();
     }
-    if (t === 'death' && msg.lost != null) { const x = msg.lost + (g.char.ch.xp ?? 0); if (x > 0) { ad.lossN = (ad.lossN ?? 0) + 1; ad.lossK = ema(ad.lossK, msg.lost / x, ad.lossN); } }
     if (t === 'gend' && !msg.auto) {
       const gt = st.gather, n = gt?.n;
       if (st.on) tripEnd(false);
