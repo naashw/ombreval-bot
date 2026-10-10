@@ -265,7 +265,9 @@
     if (p && now() - st.zonePickAt < ZONE_DWELL && p.lvl[0] <= g.level && st.zonePickQ === qk && st.zonePickLvl === g.level && !blocked) return p;
     const arms = zoneArms().filter(a => a.ok);
     st.zoneArms = arms;
-    st.zonePick = arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk; st.zonePickLvl = g.level;
+    // Quests first: the arm holding the active kill/collect/dungeon step wins over the ladder.
+    const qa = arms.find(a => a.qb > 0);
+    st.zonePick = qa?.z ?? arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk; st.zonePickLvl = g.level;
     (st.ladder ??= []).push(`${new Date().toTimeString().slice(0, 5)} niv${g.level} ${st.zonePick.name}`); if (st.ladder.length > 30) st.ladder.shift();
     jlog('bras', { arm: st.zonePick.name, arms: arms.map(a => `${a.z.name}|${a.a}|${Math.round(a.mean)}|${a.n.toFixed(1)}`) });
     return st.zonePick;
@@ -294,6 +296,8 @@
     on: false, home: null, wander: null, wanderUntil: 0, kills: 0, deaths: 0,
     xp0: null, lvl0: null, t0: 0, last: '', pressed: new Set(), deadSince: 0, nav: null,
   };
+  if (window.__botCarry && Date.now() - window.__botCarry.at < 30000) { st.carrySeen = new Set(window.__botCarry.seen); setTimeout(() => { st.carrySeen = null; }, 30000); }
+  delete window.__botCarry;
 
   const now = () => performance.now();
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -573,9 +577,10 @@
   const strikeGap = (d, reach, margin, v, T, chasing) => d - (chasing ? v * T : 0) - reach - margin;
   // Ideal distance band to the target: past the widest melee reach plus margin, inside our range minus what the target
   // slips away during our latency. Short weapons (range below the band) just stay in range.
-  const kiteBand = (reach, margin, range, slip) => { const hi = range - slip; return { lo: Math.min(reach + margin, hi), hi }; };
+  // hi keeps 10 % of the range in hand: at the very edge the target drifted out between casts (fight time without a key).
+  const kiteBand = (reach, margin, range, slip) => { const hi = 0.9 * range - slip; return { lo: Math.min(reach + margin, hi), hi }; };
   console.assert(strikeGap(6, 2, 0.5, 4, 0.5, true) === 1.5 && strikeGap(6, 2, 0.5, 4, 0.5, false) === 3.5, 'strikeGap');
-  console.assert((b => b.lo === 2.5 && b.hi === 12)(kiteBand(2, 0.5, 13, 1)) && kiteBand(2, 0.5, 2.3, 0).lo === 2.3, 'kiteBand');
+  console.assert((b => b.lo === 2.5 && Math.abs(b.hi - 10.7) < 1e-9)(kiteBand(2, 0.5, 13, 1)) && Math.abs(kiteBand(2, 0.5, 2.3, 0).lo - 2.07) < 1e-9, 'kiteBand');
   function swingTick(me) {
     const t = now(), army = myAllies();
     for (const m of g.entities.visibleMonsters()) {
@@ -583,7 +588,10 @@
       mState.set(m.id, m.state);
       if (m.dead || m.state === prev || m.state !== 'windup') continue;
       const k = m.def?.kind, d = dist(m.pos, me);
-      if (army.some(a => dist(a.pos, m.pos) < d)) continue; // swinging at an ally, not at us
+      // Swinging at an ally, not at us: an ally closer than us in its facing cone (allies behind or beside it do not count;
+      // the old "any ally closer" test dropped nearly every swing next to the army, so no margin was ever learned).
+      const fx = Math.sin(m.yaw ?? 0), fz = Math.cos(m.yaw ?? 0), facing = p => ((p.x - m.pos.x) * fx + (p.z - m.pos.z) * fz) / (dist(p, m.pos) || 1);
+      if (army.some(a => dist(a.pos, m.pos) < d && facing(a.pos) > 0.9)) continue;
       const e = ad.reach[k] ??= { d: null, n: 0, mel: 0, rng: 0 };
       if (SHOTS.includes(m.attack)) e.rng++;
       if (!CONTACT.includes(m.attack) || d > CHASE_PRIOR) continue;
@@ -692,7 +700,11 @@
     const per = questReward() / Math.max(1, (q.need ?? 1) - (q.have ?? 0));
     return 1 + Math.log1p(per / Math.max(1, ad.tot.xp / ad.tot.kills));
   }
-  const smith = (o, kite) => smithScore(enemyDps(o.m), o.m.hp, myDps(), o.d,
+  // Threat floor: behind the army the learned dps of most kinds falls to ~0, which made every score 0 and let a target
+  // 40 m away win over the one in range (the bot then held still out of range). A fifth of the def prior keeps the
+  // time-to-kill term (distance included) deciding between near-harmless targets.
+  // TODO(ceiling): the 0.2 share is a guess; a learned xp-per-second target value would replace it.
+  const smith = (o, kite) => smithScore(Math.max(enemyDps(o.m), 0.2 * priorDps(o.m.def) * lvlScale(o.m.level)), o.m.hp, myDps(), o.d,
     kite && (o.m.def?.speed ?? 0) > PLAYER_SPEED, now() - (hitUs.get(o.m.id) ?? -1e9) < 3000) * questMul(o.m) * groupMul(o.m);
 
   // --- Engagement model: time to kill vs time to die, with a self-tuned safety margin.
@@ -796,7 +808,8 @@
     fights.push({ t0: f.at, t1: Date.now(), zone: f.zone, strat: f.strat, pull: f.k, comp: f.comp, maxAtk: f.maxAtk, lvl: f.lvl,
       hp0: pct(f.hp0), hpMin: pct(f.minHp), hpEnd: died ? 0 : pct(g.hp / g.life), potions: Math.max(0, f.pot0 - g.char.potions),
       ess: Math.round(f.ess), casts: f.casts, dmgIn: Object.fromEntries(Object.entries(f.dmgIn).map(([k, v]) => [k, Math.round(v)])),
-      kills: st.kills - f.kills0, xp: Math.round(gained), outcome: died ? 'death' : f.disengaged ? 'disengage' : 'win',
+      kills: st.kills - f.kills0, xp: Math.round(gained), idle: +((f.idle ?? 0) / 1000).toFixed(1), walk: +((f.walk ?? 0) / 1000).toFixed(1),
+      noKey: Object.fromEntries(Object.entries(f.why ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => [k, +(v / 1000).toFixed(1)])), outcome: died ? 'death' : f.disengaged ? 'disengage' : 'win',
       margin: +f.margin.toFixed(3), ttk: f.ttk && +f.ttk.toFixed(1), ttd: f.ttd && +f.ttd.toFixed(1) });
     if (fights.length > FIGHTS_MAX) fights.splice(0, fights.length - FIGHTS_MAX);
   }
@@ -1209,7 +1222,21 @@
     st.escaping = !!out;
     return out;
   }
+  // Charges (attack 'charge': gorvak from ~15 m, crawler, beetle) carry no telegraph: during the windup, the line along
+  // the charger's facing (our distance + 4 m long, its body plus ours wide) is treated as a line telegraph, left sideways.
+  const LINE_ATTACKS = ['charge'];
+  function chargeScan(me, mg) {
+    for (const c of g.entities.visibleMonsters()) {
+      if (c.dead || c.state !== 'windup' || !LINE_ATTACKS.includes(c.attack)) continue;
+      const fx = Math.sin(c.yaw ?? 0), fz = Math.cos(c.yaw ?? 0), dx = me.x - c.pos.x, dz = me.z - c.pos.z;
+      const along = dx * fx + dz * fz, perp = dx * fz - dz * fx, d = Math.hypot(dx, dz);
+      if (d < 25 && along > -mg && along < d + 4 && Math.abs(perp) < (c.radius ?? 0.6) + ME_R + mg) { const side = perp >= 0 ? 1 : -1; return [fz * side, -fx * side]; }
+    }
+    return null;
+  }
   function teleScan(me, m) {
+    const ch = chargeScan(me, m);
+    if (ch) return ch;
     for (let i = teles.length - 1; i >= 0; i--) {
       const t = teles[i];
       if (now() > t.until || t.src?.dead) { teles.splice(i, 1); continue; }
@@ -1251,14 +1278,20 @@
   // Health globe: worth the hp it restores (learned heal fraction ad.globe, prior = what is missing), scaled by how soon
   // we need it: at once while hit in the last 4 s, else by the deficit over one globe (small deficits regen anyway).
   // The client only collects globes below full life and potions below 10, so those are worth 0 otherwise.
-  function globeValue() {
+  // In a fight the globe is worth what the predicted hp trajectory needs: hp left after the incoming dps over the time to
+  // clear what is engaged (st.incoming, st.ttkEng, set each tick), measured against the potion line plus one globe.
+  // On the way (2.5 m) it is cheap; out of a fight, the deficit over one globe as before.
+  function globeValue(d = 99) {
     const miss = Math.max(0, 1 - g.hp / g.life), heal = ad.globe || miss;
     if (!miss) return 0;
-    const fill = Math.min(miss, heal) / heal, hot = [...hitUs.values()].some(t => now() - t < 4000);
-    return fill * (hot ? 1 : Math.min(1, miss / heal));
+    const fill = Math.min(miss, heal) / heal;
+    if (!st.fight) return fill * Math.min(1, miss / heal);
+    const low = g.hp - (st.incoming ?? 0) * (st.ttkEng ?? 0), line = (potionAt() + heal) * g.life;
+    const need = Math.min(1, Math.max(0, (line - low) / (heal * g.life)));
+    return fill * Math.max(need, d < 2.5 ? 0.6 : 0);
   }
   function lootScore(d) {
-    if (d?.kind === 'globe') return 0.95 * globeValue();
+    if (d?.kind === 'globe') return 0.95 * globeValue(dist(d.pos, g.sim));
     if (d?.kind === 'potion' && g.char.potions >= 10) return 0;
     if (AUTO_LOOT.has(d?.kind)) return 0.95; // beats dungeon/farm (+inertia) so nothing is left behind
     const it = d?.item;
@@ -1354,12 +1387,17 @@
   // NPCs whose 'give'/'turn' marker led nowhere (profession markers, etc.): npc id -> retry timestamp.
   const QUEST_SKIP = new Map();
 
+  // Quest objective. Main story chain first (user rule: do it in order, it leads to the next zones): its HUD step when
+  // actionable; then NPC markers (turn-ins, new quests), then the guided quest; a level-locked main step comes last.
   function questObjective(g, zones = []) {
     const story = g.char?.story;
     if (!story) return null;
     const me = { x: g.sim.x, z: g.sim.z };
     const d = p => Math.hypot(p.x - me.x, p.z - me.z);
-    // 1. NPC markers, refreshed by the client every 0.4 s (HY L73629, S1 L82608).
+    const mainId = document.querySelector('.quest.hud-block .quest-main')?.dataset.q;
+    const main = mainId ? questFromBlock(g, zones, mainId) : null;
+    if (main && main.type !== 'other') return { ...main, main: true };
+    // NPC markers, refreshed by the client every 0.4 s (HY L73629, S1 L82608).
     const views = (g.npcs?.views ?? []).filter(v => !(QUEST_SKIP.get(v.def.id) > Date.now()));
     const at = v => ({ x: v.root.position.x, z: v.root.position.z });
     const best = m => views.filter(v => v.marker === m)
@@ -1368,10 +1406,12 @@
       const v = best(m);
       if (v) return { type: 'talk', npc: v.def.id, ...at(v), label: `${m === 'turn' ? 'Parler/rendre' : 'Prendre'} : ${v.def.name}` };
     }
-    // 2. Guided quest (compass, '@main' by default) and its HUD block (Jae L93590).
-    const id = document.querySelector('.quest.hud-block .quest-guide.on')?.dataset.guide
-      ?? document.querySelector('.quest.hud-block .quest-main')?.dataset.q;
-    const block = id && document.querySelector(`.quest.hud-block [data-q="${id}"]`);
+    // Guided quest (compass) and its HUD block (Jae L93590).
+    const id = document.querySelector('.quest.hud-block .quest-guide.on')?.dataset.guide;
+    return (id && id !== mainId ? questFromBlock(g, zones, id) : null) ?? main;
+  }
+  function questFromBlock(g, zones, id) {
+    const block = document.querySelector(`.quest.hud-block [data-q="${id}"]`);
     if (!block) return null;
     const title = block.querySelector('.quest-name span')?.textContent ?? id;
     const line = [...block.querySelectorAll('.quest-text')].find(e => !e.classList.contains('qdone') && !e.classList.contains('quest-alt'));
@@ -1381,6 +1421,8 @@
     if (lock) return { type: 'other', minLevel: +lock[1], label: `${title} : ${text}` };
     const cnt = line.querySelector('b')?.textContent.match(/(\d+)\/(\d+)/);
     const name = (cnt ? text.slice(0, text.lastIndexOf(cnt[0])) : text).trim();
+    // TODO(ceiling): the compass points at the guided quest; a main step read while another quest is guided may carry
+    // that quest's target.
     const t = g.compass?.target; // {x, z, r}: zone for kill/collect, NPC, dungeon entrance...
     const base = { label: `${title} : ${text}`, ...(t ? { x: t.x, z: t.z, r: t.r } : {}) };
     if (t) {
@@ -1389,7 +1431,10 @@
     }
     if (/^Tuer : /.test(name)) return { type: 'kill', kind: name.slice(7), need: cnt ? +cnt[2] : 1, have: cnt ? +cnt[1] : 0, ...base };
     if (/^Abattre /.test(name)) return { type: 'kill', kind: name.slice(8), need: 1, have: 0, ...base };
-    if (/^Parler à /.test(name)) return { type: 'talk', ...base };
+    if (/^Parler à /.test(name)) { // resolve the NPC by name so the talk goal can run it (markers do not cover main steps)
+      const nm = name.slice(9).trim(), v = (g.npcs?.views ?? []).find(x => x.def?.name && (nm.startsWith(x.def.name) || x.def.name.startsWith(nm)));
+      return { type: 'talk', ...base, ...(v ? { npc: v.def.id, x: v.root.position.x, z: v.root.position.z } : {}) };
+    }
     if (/^Explorer /.test(name)) return { type: 'explore', ...base };
     if (/^Terminer : /.test(name)) return { type: 'dungeon', ...base };
     if (/^(Préparer|Forger|Un objet|Choisir|Tenir|Refermer|Repousser|Réussir)|points dépensés|Parlez à|Retournez/.test(name)) return { type: 'other', ...base };
@@ -1435,9 +1480,11 @@
   function endTalk() {
     if (!st.talk) return;
     g.send({ t: 'talkEnd' });
-    // Nothing quest-related happened during this talk: ignore that NPC's marker for 5 min.
-    if ((st.questEventAt ?? 0) <= st.talk.questAt) QUEST_SKIP.set(st.talk.npc, Date.now() + 5 * 60000);
-    else ad.qx.talk = ema(ad.qx.talk, now() - st.talk.at, ad.qx.tn++);
+    // Nothing quest-related happened during this talk: ignore that NPC's marker for 5 min, doubled at each fruitless
+    // talk in a row (a turn-in that lacks its items no longer drags the bot back every 5 min).
+    const fails = st.talkFails ??= new Map();
+    if ((st.questEventAt ?? 0) <= st.talk.questAt) { const n = fails.get(st.talk.npc) ?? 0; fails.set(st.talk.npc, n + 1); QUEST_SKIP.set(st.talk.npc, Date.now() + 5 * 60000 * 2 ** n); }
+    else { fails.delete(st.talk.npc); ad.qx.talk = ema(ad.qx.talk, now() - st.talk.at, ad.qx.tn++); }
     st.talk = null; dlgSeen.clear();
   }
   function questStep() {
@@ -1837,14 +1884,18 @@
     if (t - (st.scoreAt ?? 0) < 500 && cur && !goalDone(cur, c)) return cur;
     st.scoreAt = t;
     const score = {
-      fight: c.attacked ? 1.5 : c.target ? (c.target.d < 14 ? 1.0 : 0.55) : 0,
+      // Not attacked: the kill's xp over the time left to get it (hp remaining, walk), as a score relative to farming
+      // (0.2 = our xp/s); a boss at 15 % is cheap xp and keeps the fight over a talk quest.
+      fight: c.attacked ? 1.5 : c.target ? Math.max(c.target.d < 14 ? 1.0 : 0.55, Math.min(1.45, killScore(c.target))) : 0,
       // Out of potions with gold: restocking beats farming a target (only being attacked is higher).
       shop: st.shopDone === false && wantsShop() ? (g.char.potions <= 1 && g.char.gold >= potionPrice() * 4 ? 1.2 : 0.8) : 0,
-      talk: talkScore(c.quest),
+      // World quest steps (talk, explore) wait while we are in a dungeon: its coordinates are not ours, and the run is
+      // finished first (the dungeon goal leaves through the exit when it is over).
+      talk: g.dungeon ? 0 : talkScore(c.quest) * (st.fight ? 0.5 : 1), // a quest talk waits for the fight's end unless it dominates
       loot: c.drop ? lootScore(c.drop) : 0,
       // Grouped: no dungeon run of our own, only our chest once the boss is down.
       dungeon: grouped() ? (g.dungeon && g.dstate?.boss && !g.dstate.opened ? 0.65 : 0) : g.dungeon || armDoor() ? 0.65 : 0,
-      explore: !grouped() && c.quest?.type === 'explore' && c.quest.x != null && (c.quest.minLevel ?? 1) <= g.level ? 0.6 : 0,
+      explore: !g.dungeon && !grouped() && c.quest?.type === 'explore' && c.quest.x != null && (c.quest.minLevel ?? 1) <= g.level ? 1.02 * (st.fight ? 0.5 : 1) : 0,
       follow: needFollow() ? 0.7 : 0,
       farm: 0.2,
     };
@@ -1857,12 +1908,23 @@
     }
     return best;
   }
+  // Kill value: learned xp per unit of def.xp (ad.xpu, from kill/xp event pairs) x the monster's def.xp, per second of
+  // the remaining kill time (hp left / our dps, plus the walk into range).
+  const killXp = m => (ad.xpu ?? (ad.tot.kills ? ad.tot.xp / ad.tot.kills / 10 : 1)) * (m.def?.xp ?? 10);
+  function killScore(o) {
+    if (!o?.m) return 0;
+    const ttk = o.m.hp / Math.max(1, myDps()) + Math.max(0, o.d - (sk(BASE_SKILLS[0]).range ?? 12)) / PLAYER_SPEED;
+    return 0.2 * killXp(o.m) / Math.max(0.3, ttk) / Math.max(1e-6, xpps());
+  }
   // Talk value: learned quest reward over trip (waystone aware) plus talk time, plus a whole quest for a new one,
   // as a goal score relative to farming (0.2 at our measured xp/s), kept below fighting a near target.
   function talkScore(q) {
     if (grouped() || !(q?.type === 'talk' && q.npc && q.x != null) || dist(g.sim, q) >= 250) return 0;
+    // Quests first: the chain's xp plus the zones it unlocks beat farming a new pull (1.0) and loose loot; mobs on us
+    // (1.5), a cheap kill (killScore) and reflexes still win, and in a fight the talk score is halved (decideRaw).
+    // TODO(ceiling): the progression value of a step is not measured; its xp rate alone rarely beat farming.
     const sec = tripLen(g.sim, q) / PLAYER_SPEED + ad.qx.talk / 1000 + (/^Prendre/.test(q.label) ? ad.qx.dur / 1000 : 0);
-    return Math.min(0.9, 0.2 * questReward() / sec / Math.max(1e-6, xpps()));
+    return Math.max(1.02, Math.min(1.4, 0.2 * questReward() / sec / Math.max(1e-6, xpps())));
   }
   function goalDone(goal, c) {
     if (goal === 'fight') return !c.target;
@@ -2072,11 +2134,16 @@
     // Allowed targets: what is on us (or within 6 m) plus the planned pull, ranked by Smith's rule.
     // Anchored fight (attacked at a dungeon door or a waystone): only attackers, no pull, so nothing else gets pulled.
     const anchor = st.anchor && now() - st.anchor.at < 1500 ? st.anchor : null;
-    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || plan.ids.has(o.m.id) || (g.dungeon && isSeal(o.m) && o.d < 25) || leadTgt(o.m) || onMate(o.m))
+    // Monsters met in the current fight stay targets while alive (a boss that stops swinging is not dropped half dead).
+    const met = o => st.fight?.seen.has(o.m.id) || st.carrySeen?.has(o.m.id);
+    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || plan.ids.has(o.m.id) || met(o) || (g.dungeon && isSeal(o.m) && o.d < 25) || leadTgt(o.m) || onMate(o.m))
       .filter((o, _, all) => allowedDun(o, all)).map(o => ({ ...o, s: smith(o, kite) * dunMul(o.m) })).sort((a, b) => b.s - a.s);
     st.top = ranked.slice(0, 3).map(o => `${o.m.def?.kind}${o.m.level} ${o.s.toFixed(2)}`);
     const tgtO = ranked[0];
     const quest = questStep();
+    // Fight forecast for the globe value: incoming dps of attackers and the time to clear what is engaged.
+    st.incoming = attackers.reduce((a, o) => a + enemyDps(o.m), 0);
+    st.ttkEng = eng.reduce((a, o) => a + o.m.hp, 0) / Math.max(1, myDps() * (1 + splashShare() * Math.max(0, eng.length - 1)));
     const drop = lootTarget(me);
     const goal = chooseGoal({ attacked, target: tgtO, quest, drop });
     const target = tgtO?.m;
@@ -2100,8 +2167,11 @@
       const army = myAllies();
       if (hpPct < fleeAt()) { const c = centroid(attackers.length ? attackers : [tgtO]); move = steer(me.x - c.x, me.z - c.z); st.last = 'fuit (PV bas)'; }
       else if (attackers.length && kite) { move = kiteMove(me, eng, tgtO); st.last = `kite ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
-      else if (attackers.length) { move = holdMove(me, eng, army); st.last = `tient derrière l'armée ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
-      else if (d > (sk(BASE_SKILLS[0]).range ?? 12) - (target.def?.speed ?? 0) * lat()) { move = travelPath({ x: target.pos.x, z: target.pos.z }, 'fight'); st.last = `tire ${plan.k} groupe(s) ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
+      // Hold behind the army only with the target in bolt range; out of range, holding was pure idle time (approach below).
+      else if (attackers.length && d <= (sk(BASE_SKILLS[0]).range ?? 12)) { move = holdMove(me, eng, army); st.last = `tient derrière l'armée ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
+      // Close in with hysteresis: once started, walk until 15 % inside the range (stopping right at the edge flipped
+      // walk/stand every tick as the target drifted across it).
+      else if ((st.closing = d > (sk(BASE_SKILLS[0]).range ?? 12) * (st.closing === target.id ? 0.85 : 1) - (target.def?.speed ?? 0) * lat() ? target.id : null)) { move = travelPath({ x: target.pos.x, z: target.pos.z }, 'fight'); st.last = `tire ${plan.k} groupe(s) ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
       else st.last = `combat ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`;
 
       // Shaman mammoth: stay in contact (tusks arc 3.6 m), damage taken -40 %.
@@ -2201,6 +2271,11 @@
     let d;
     try { d = decide(); } catch (e) { st.last = 'erreur ' + e.message; d = { move: [0, 0], aim: null, slots: [] }; }
     setKeys(d.slots);
+    // Fight time with no key held and no roll: standing idle, or walking (out of range, repositioning).
+    if (st.fight && !d.slots.length && !d.roll) {
+      const k = Math.hypot(d.move[0], d.move[1]) > 0.1 ? 'walk' : 'idle', dt = Math.min(200, gap), why = String(st.last).split(/ \d| [a-z]+ \d/)[0].slice(0, 24);
+      st.fight[k] = (st.fight[k] ?? 0) + dt; const w = st.fight.why ??= {}; w[why] = (w[why] ?? 0) + dt;
+    }
     const r = origBuild(d.aim ? { x: d.aim.x, z: d.aim.z } : aimPt);
     if (d.roll) st.rolls = (st.rolls ?? 0) + 1;
     (st.moves ??= []).push(d.move.map(v => +v.toFixed(2))); if (st.moves.length > 12) st.moves.shift();
@@ -2212,6 +2287,8 @@
   g.onMessage = msg => {
     if (st.on && msg?.t === 's') for (const ev of msg.ev ?? []) {
       if (ev.e === 'kill') {
+        const km = g.entities.monsters.get(ev.id)?.view;
+        if (km?.def?.xp) st.lastKill = { at: now(), base: km.def.xp };
         st.kills++; st.killAt = now(); ad.tot.kills = (ad.tot.kills ?? 0) + 1;
         const zs = zoneStat(st.zone ?? 'fixe'); zs.kills = (zs.kills ?? 0) + 1;
         const p = st.deathPend; // death cost sample: xp lost plus xp not earned until this first kill
@@ -2225,6 +2302,8 @@
         if (r && r.zone === st.zone) r[r.side].xp += a;
         if (st.qDone) st.qDone.xp = Math.max(st.qDone.xp, a);
         st.lastXpEv = { a, at: now() };
+        // xp per def.xp unit: an xp event right after a kill (same snapshot) is that kill's xp.
+        if (st.lastKill && now() - st.lastKill.at < 50 && a > 0) { const u = a / st.lastKill.base; ad.xpu = ema(ad.xpu ?? u, u, ad.xpuN = (ad.xpuN ?? 0) + 1); st.lastKill = null; }
       }
       else if (ev.e === 'tele') addTele(ev);
       else if (ev.e === 'toast' && typeof ev.m === 'string') {
@@ -2307,6 +2386,8 @@
       g.ui.toast?.('Bot : arrêt');
     },
     stop() {
+      // Hot-load carry: the next instance keeps the current fight's monsters as targets for 30 s.
+      window.__botCarry = { seen: [...(st.fight?.seen ?? [])], at: Date.now() };
       api.pause();
       g.controls.build = origBuild; g.onMessage = origOnMessage;
       window.removeEventListener('keydown', onKey, true);
@@ -2315,6 +2396,7 @@
     },
     drainFights: () => fights.splice(0),
     drainJournal: () => journal.splice(0),
+    findPath: (from, to) => findPath(from, to), // read-only planner probe (tests, viz)
     // Read-only snapshot for viz.page.js.
     debug: () => ({
       navs: Object.fromEntries(Object.entries(st.navs ?? {}).map(([k, n]) => [k, { goal: n.goal, pts: n.pts, i: n.i, at: n.progressAt }])),
