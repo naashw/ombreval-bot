@@ -6,7 +6,6 @@
   if (!g?.controls) throw new Error('__game not ready');
 
   const SLOT_KEYS = ['Mouse0', 'Mouse2', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyR', 'Digit5'];
-  const KITE_MAX = 11;
   // Supported classes: necromancer (default paths) and shaman (SHAMAN.md, per-class branches below).
   const CLS = g.char.ch.cls, SHAMAN = CLS === 'shaman';
 
@@ -19,6 +18,8 @@
   ad.tot ??= { xp: 0, ms: 0 }; ad.ab ??= {}; ad.ab.best ??= {};
   // leash: kind -> learned distance where a chase stops; avoid: kind -> avoid ms; spots: remembered danger areas.
   ad.leash ??= {}; ad.avoid ??= {}; ad.spots ??= []; ad.recentDeaths ??= [];
+  // reach: kind -> learned strike reach and attack mix; kmargin: kind -> learned kite margin (see swingTick).
+  ad.reach ??= {}; ad.kmargin ??= {};
   // Quest model: reward as a fraction of the level xp, seconds per objective unit, talk and quest durations.
   ad.qx ??= { frac: 0.4, n: 0, rate: {}, dur: 600000, dn: 0, talk: 5000, tn: 0 };
   delete ad.offset;
@@ -29,7 +30,7 @@
     for (const z of Object.values(ad.zones)) for (const k of ['xp', 'ms', 'deaths', 'kills', 'gold', 'runs']) if (z[k]) z[k] *= 0.1;
     for (const e of Object.values(ad.enemy)) e.n = Math.min(e.n, 2);
     for (const e of Object.values(ad.pull)) if (e) for (const k of ['xp', 'ms', 'n']) if (e[k]) e[k] *= 0.1;
-    Object.assign(ad, { leash: {}, spots: [], avoid: {}, recentDeaths: [], deaths: [], caution: 0, dpsN: Math.min(ad.dpsN, 3), deathN: Math.min(ad.deathN ?? 0, 2) });
+    Object.assign(ad, { leash: {}, reach: {}, kmargin: {}, spots: [], avoid: {}, recentDeaths: [], deaths: [], caution: 0, dpsN: Math.min(ad.dpsN, 3), deathN: Math.min(ad.deathN ?? 0, 2) });
     if (ad.dunCd) ad.dunCd = {};
   }
   ad.gameVer = gameVer;
@@ -357,6 +358,8 @@
       win.inDmg[k] = (win.inDmg[k] ?? 0) + (ev.a ?? 0) / lvlScale(m.level);
       if (st.fight) st.fight.dmgIn[k] = (st.fight.dmgIn[k] ?? 0) + (ev.a ?? 0);
       hitUs.set(ev.s, now());
+      const sw = swings.get(ev.s), e = ad.reach[k], dh = dist(m.pos, g.sim);
+      if (sw) { sw.hit = true; if (e && dh > e.d) e.d = ema(e.d, dh, e.n++); }
     } else if (g.entities.monsters.has(ev.id) && (ev.s === g.meId || g.entities.allies.has(ev.s))) win.outDmg += ev.a ?? 0;
   }
   // Called every tick: accumulate exposure, flush samples every 4 s.
@@ -376,6 +379,49 @@
     if (win.outExp >= 2) {
       ad.dpsRatio = Math.max(0.05, ema(ad.dpsRatio, win.outDmg / win.outExp / Math.max(1, priorMyDps()), ad.dpsN++));
       win.outDmg = 0; win.outExp = 0;
+    }
+  }
+
+  // --- Threat geometry. Monster reach is server side (defs carry speed and radius only), so it is learned per kind:
+  // EMA of the center distance where a contact windup on us starts (both hitboxes included). Ranged: most of its
+  // windups are shots. Margin: per kind EMA from how its swings on us ended while kiting: a hit adds what it closes
+  // during our reaction latency, a miss gives back the slack we kept past its reach.
+  const CONTACT = ['melee', 'lunge', 'smash', 'slam', 'breath', 'explode', 'ambush'];
+  const SHOTS = ['shoot', 'spit', 'fireball', 'bolt', 'volley', 'multishot', 'boulder', 'hook'];
+  const ME_R = 0.5; // player collision radius (bundle ej)
+  const swings = new Map(), mState = new Map();
+  const lat = () => (st.lat ?? 100) / 1000;
+  const reachOf = m => ad.reach[m.def?.kind]?.d ?? (m.def?.radius ?? 0.6) + ME_R + 1;
+  const kMargin = m => ad.kmargin[m.def?.kind]?.m ?? (m.def?.speed ?? PLAYER_SPEED) * lat();
+  const isRanged = m => (e => !!e && e.rng > e.mel)(ad.reach[m.def?.kind]);
+  // Distance left before a monster can strike us within horizon T: chasers close at their speed, swinging ones are set.
+  const strikeGap = (d, reach, margin, v, T, chasing) => d - (chasing ? v * T : 0) - reach - margin;
+  // Ideal distance band to the target: past the widest melee reach plus margin, inside our range minus what the target
+  // slips away during our latency. Short weapons (range below the band) just stay in range.
+  const kiteBand = (reach, margin, range, slip) => { const hi = range - slip; return { lo: Math.min(reach + margin, hi), hi }; };
+  console.assert(strikeGap(6, 2, 0.5, 4, 0.5, true) === 1.5 && strikeGap(6, 2, 0.5, 4, 0.5, false) === 3.5, 'strikeGap');
+  console.assert((b => b.lo === 2.5 && b.hi === 12)(kiteBand(2, 0.5, 13, 1)) && kiteBand(2, 0.5, 2.3, 0).lo === 2.3, 'kiteBand');
+  function swingTick(me) {
+    const t = now(), army = myAllies();
+    for (const m of g.entities.visibleMonsters()) {
+      const prev = mState.get(m.id);
+      mState.set(m.id, m.state);
+      if (m.dead || m.state === prev || m.state !== 'windup') continue;
+      const k = m.def?.kind, d = dist(m.pos, me);
+      if (army.some(a => dist(a.pos, m.pos) < d)) continue; // swinging at an ally, not at us
+      const e = ad.reach[k] ??= { d, n: 0, mel: 0, rng: 0 };
+      if (SHOTS.includes(m.attack)) e.rng++;
+      if (!CONTACT.includes(m.attack) || d > CHASE_PRIOR) continue;
+      e.mel++; e.d = ema(e.d, d, e.n++);
+      swings.set(m.id, { k, m, v: m.def?.speed ?? PLAYER_SPEED, at: t, kite: st.strat === 'kite' && st.goal === 'fight' });
+    }
+    for (const [id, s] of swings) {
+      if (s.m.state !== 'windup' && s.end == null) { s.end = t; s.dEnd = dist(s.m.pos, me); }
+      if (!s.hit && !(s.end && t - s.end > 400) && !s.m.dead && t - s.at < 3000) continue;
+      swings.delete(id);
+      if (!s.kite || (!s.hit && s.dEnd == null)) continue;
+      const km = ad.kmargin[s.k] ??= { m: s.v * lat(), n: 0 };
+      km.m = ema(km.m, s.hit ? km.m + s.v * lat() : Math.max(0, km.m - Math.max(0, s.dEnd - ad.reach[s.k].d)), km.n++);
     }
   }
 
@@ -561,7 +607,7 @@
     if (fights.length > FIGHTS_MAX) fights.splice(0, fights.length - FIGHTS_MAX);
   }
 
-  // --- Movement strategy: kite slow packs in a circle, hold behind the army against fast ones.
+  // --- Movement strategy: kite (threat geometry, kiteMove) against slow packs, hold behind the army against fast ones.
   // Prior from the share of slower enemies; learned xp/s per (strategy, kind) overrides once both have 1 min of data.
   function chooseStrat(eng) {
     if (!eng.length) return st.strat ?? 'hold';
@@ -569,7 +615,7 @@
     const counts = {};
     for (const o of eng) counts[o.m.def?.kind] = (counts[o.m.def?.kind] ?? 0) + 1;
     const kind = st.mainKind = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-    if (SHAMAN) return 'kite'; // no army to hold behind; kiteMove circles the totem while it stands
+    if (SHAMAN) return 'kite'; // no army to hold behind; kiteMove stays in the totem heal while it stands
     let s =slow >= 0.3 ? 'kite' : 'hold';
     const rate = x => x && x.ms > 60000 ? x.xp / x.ms : null;
     const rk = rate(ad.strat[`kite|${kind}`]), rh = rate(ad.strat[`hold|${kind}`]);
@@ -586,20 +632,66 @@
     }
     return [0, 0];
   }
-  // Orbit the enemy centroid at ~9 m, staying inside the zone and flipping direction at walls.
-  // Shaman with a totem up: orbit the totem at 7 m instead (inside its 8 m heal and pulses).
-  function kiteMove(me, eng) {
-    const tot = SHAMAN && totemLeft() > 0;
-    const c = tot ? st.totemPos : centroid(eng), dx = me.x - c.x, dz = me.z - c.z, d = Math.hypot(dx, dz) || 1, R = tot ? 7 : 9;
-    st.orbit ??= 1;
-    const radial = (R - d) / R * 1.5;
-    let vx = -dz / d * st.orbit + dx / d * radial, vz = dx / d * st.orbit + dz / d * radial;
-    const hd = dist(me, st.home ?? me);
-    if (st.home && hd > LEASH * 0.8) { vx += (st.home.x - me.x) / hd * hd / LEASH; vz += (st.home.z - me.z) / hd * hd / LEASH; }
-    const [px, pz] = dropPull(me); vx += px; vz += pz;
-    const vl = Math.hypot(vx, vz) || 1;
-    if (solid(me.x + vx / vl * 1.5, me.z + vz / vl * 1.5) && now() - (st.orbitFlip ?? 0) > 1500) { st.orbit *= -1; st.orbitFlip = now(); }
-    return steer(vx, vz);
+  // Hostile projectiles reaching us within 1.5 s (ours fly away from us): their rays, to step off.
+  function shotsAtMe(me) {
+    const out = [];
+    for (const p of g.projectiles?.list?.values?.() ?? []) {
+      const rx = me.x - p.pos.x, rz = me.z - p.pos.z, v = Math.hypot(p.vel.x, p.vel.z) || 1, ux = p.vel.x / v, uz = p.vel.z / v;
+      const tt = (rx * ux + rz * uz) / v;
+      if (tt > 0 && tt < 1.5 && Math.abs(rx * uz - rz * ux) < 2 * ME_R) out.push({ x: p.pos.x, z: p.pos.z, ux, uz });
+    }
+    return out;
+  }
+  // Angle (rad) the pack covers seen from p: small = grouped for lines and splashes.
+  function spread(p, eng) {
+    if (eng.length < 2) return 0;
+    const a = eng.map(o => Math.atan2(o.m.pos.z - p.z, o.m.pos.x - p.x)).sort((x, y) => x - y);
+    let gap = a[0] + 2 * Math.PI - a[a.length - 1];
+    for (let i = 1; i < a.length; i++) gap = Math.max(gap, a[i] - a[i - 1]);
+    return 2 * Math.PI - gap;
+  }
+  // Threat geometry kite. Casting no longer roots (live bundle: bolts/claws/crows walk at 60 % until release, full speed
+  // after), so attacks never stop; only the spot is chosen. Staying is free, moving is scored on: melee kinds we outrun
+  // that can strike before our next action lands (horizon T), the band to the target, pack spread, idle packs, leash,
+  // walls/danger spots, the totem heal (shaman) and hostile projectile rays. Faster kinds are fought in place (roll).
+  function kiteMove(me, eng, tgtO) {
+    const a = g.sim.action, T = (a ? Math.max(0, a.dur - a.t) : castSec(BASE_SKILLS[0])) + lat();
+    const vMe = PLAYER_SPEED * (g.stats?.moveSpd ?? 1), tgt = tgtO?.m;
+    const mel = eng.filter(o => !isRanged(o.m) && (o.m.def?.speed ?? 0) > 0);
+    const flee = mel.filter(o => ATTACK_STATES.includes(o.m.state) && o.m.def.speed < vMe);
+    const gapAt = (o, p) => strikeGap(dist(p, o.m.pos), reachOf(o.m), kMargin(o.m), o.m.def.speed, T, o.m.state === 'chase');
+    const band = kiteBand(Math.max(0, ...mel.map(o => reachOf(o.m))), Math.max(0, ...mel.map(o => kMargin(o.m))),
+      sk(BASE_SKILLS[0]).range ?? 12, (tgt?.def?.speed ?? 0) * lat());
+    const tot = SHAMAN && totemLeft() > 0, totR = (sk('ancestortotem').radius ?? 8) - ME_R;
+    const idle = [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0 && m.state === 'idle' && !eng.some(o => o.m === m));
+    const shots = shotsAtMe(me), r = Math.max(1, vMe * T), last = now() - (st.kiteAt ?? -1e9) < 300 ? st.kiteDir : null;
+    const score = p => {
+      let v = 0;
+      for (const o of flee) v += 3 * Math.max(0, -gapAt(o, p));
+      if (tgt) { const dt = dist(p, tgt.pos); v += Math.max(0, band.lo - dt) + Math.max(0, dt - band.hi); }
+      v += spread(p, eng);
+      for (const m of idle) v += Math.max(0, chaseRange(m.def?.kind) - dist(p, m.pos));
+      if (st.home) v += Math.max(0, dist(p, st.home) - LEASH * 0.9);
+      if (tot) v += Math.max(0, dist(p, st.totemPos) - totR);
+      for (const s of shots) v += 3 * Math.max(0, 2 * ME_R - Math.abs((p.x - s.x) * s.uz - (p.z - s.z) * s.ux));
+      return v;
+    };
+    let best = null, bv = score(me);
+    for (let i = 0; i < 16; i++) {
+      const ux = Math.cos(i * Math.PI / 8), uz = Math.sin(i * Math.PI / 8), p = { x: me.x + ux * r, z: me.z + uz * r };
+      if (solid(p.x, p.z) || solid(me.x + ux * r / 2, me.z + uz * r / 2) || inDanger(p)) continue;
+      const v = score(p) + 0.1 * r + (last ? 0.5 * (1 - ux * last[0] - uz * last[1]) : 0); // move cost, no zigzag
+      if (v < bv) { bv = v; best = [ux, uz]; }
+    }
+    if (best && !last) {
+      const n = mel.reduce((b, o) => !b || o.d < b.d ? o : b, null);
+      (st.kiteLog ??= []).push({ d: n && +n.d.toFixed(1), k: n?.m.def?.kind, reach: n && +reachOf(n.m).toFixed(1), margin: n && +kMargin(n.m).toFixed(2),
+        why: flee.some(o => gapAt(o, me) < 0) ? 'menace' : shots.length ? 'tir' : 'bande', casting: a?.type ?? null });
+      if (st.kiteLog.length > 30) st.kiteLog.shift();
+    }
+    st.kiteDir = best; st.kiteAt = now();
+    if (!best) { const p = dropPull(me); return p[0] || p[1] ? steer(...p) : [0, 0]; }
+    return steer(...best);
   }
   // Stand on the far side of the army from the attackers, on a corpse if one is close to that spot.
   function holdMove(me, eng, army) {
@@ -1457,7 +1549,7 @@
     if (journal.length > 3000) journal.shift();
   }
   function journalTick() {
-    const k = [st.last, st.goal, st.zone, st.dun?.phase, g.level].join('|');
+    const k = [String(st.last).replace(/-?\d+(\.\d+)?/g, '#'), st.goal, st.zone, st.dun?.phase, g.level].join('|'); // numbers (distances) do not count as a change
     if (k === st.jKey) return;
     const ev = g.level !== st.jLvl && st.jLvl != null ? 'niveau' : st.zone !== st.jZone ? 'zone' : st.dun?.phase !== st.jPh ? 'donjon' : 'action';
     st.jKey = k; st.jLvl = g.level; st.jZone = st.zone; st.jPh = st.dun?.phase;
@@ -1524,6 +1616,8 @@
     trackLoot(zs);
     trackLearn();
     account(dt, mobs);
+    swingTick(me);
+    st.lat = ema(st.lat ?? dt, dt, 1e9);
     abTick(dt);
     if (tick - (st.saveAt ?? 0) > 30000) { st.saveAt = tick; relax(); saveAd(); }
     // hp trend over the last ~2 s, for ossature
@@ -1594,9 +1688,9 @@
       aim = { x: target.pos.x, z: target.pos.z };
       const army = myAllies();
       if (hpPct < fleeAt()) { const c = centroid(attackers.length ? attackers : [tgtO]); move = steer(me.x - c.x, me.z - c.z); st.last = 'fuit (PV bas)'; }
-      else if (attackers.length && kite) { move = kiteMove(me, eng); st.last = `kite ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
+      else if (attackers.length && kite) { move = kiteMove(me, eng, tgtO); st.last = `kite ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
       else if (attackers.length) { move = holdMove(me, eng, army); st.last = `tient derrière l'armée ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
-      else if (d > KITE_MAX) { move = travelPath({ x: target.pos.x, z: target.pos.z }, 'fight'); st.last = `tire ${plan.k} groupe(s) ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
+      else if (d > (sk(BASE_SKILLS[0]).range ?? 12) - (target.def?.speed ?? 0) * lat()) { move = travelPath({ x: target.pos.x, z: target.pos.z }, 'fight'); st.last = `tire ${plan.k} groupe(s) ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
       else st.last = `combat ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`;
 
       // Shaman mammoth: stay in contact (tusks arc 3.6 m), damage taken -40 %.
@@ -1809,6 +1903,8 @@
       hp: `${g.hp}/${g.life}`, potions: g.char.potions, kills: st.kills, deaths: st.deaths, rolls: st.rolls ?? 0, lastDeath: st.lastDeath,
       min: Math.round((now() - (st.t0 || now())) / 60000), doing: st.last, retreat: st.retreat ? { why: st.retreat.why, chasers: st.retreat.ids.size, target: st.retreat.target } : null, retreats: st.retreats ?? 0, eng: st.lastEng ?? null, servants: servantCount(), talents: Object.keys(g.char.ch.tree ?? {}).length,
       goal: st.goal, moves: st.moves, goalSwitches: st.goals ?? 0, unsticks: st.unsticks ?? 0, questLabel: st.quest?.label ?? null, questEvents: st.quests ?? 0, lastQuest: st.lastQuest,
+      kite: { log: (st.kiteLog ?? []).slice(-8), lat: Math.round(st.lat ?? 0), reach: Object.fromEntries(Object.entries(ad.reach).map(([k, v]) => [k, `${v.d.toFixed(1)} m${v.rng > v.mel ? ' tir' : ''} (${v.n})`])),
+        margin: Object.fromEntries(Object.entries(ad.kmargin).map(([k, v]) => [k, `${v.m.toFixed(2)} (${v.n})`])) },
       bound: g.char.bound ?? null, ways: g.char.ways?.length ?? 0, wayTrips: st.wayTrips ?? 0, binds: st.binds ?? 0,
       loots: st.loots ?? 0, equips: st.equips ?? 0, sold: st.sold ?? 0, claims: st.claims ?? 0, gold: g.char.gold, teleDodges: st.teleDodges ?? 0, caution: ad.caution, bought: st.bought ?? 0,
       strat: st.strat, pull: st.plan?.k ?? 0, pullOpts: st.plan?.opts.length ?? 0, margin: +ad.margin.toFixed(3), dpsRatio: +ad.dpsRatio.toFixed(3),
