@@ -1,4 +1,5 @@
-// Usage: node run.mjs [start|load|stop|status]
+// Usage: node run.mjs [start|load|assist|stop|status]
+// assist: only the manual-play assist panel (F6); the necro bot is loaded paused when the character is a necromancer.
 // Attaches to Brave (debug port 9222), injects the bot, prints its status every 10 s,
 // and re-injects it after a page reload (game update, reconnect).
 import { chromium } from 'playwright';
@@ -22,11 +23,16 @@ const skills = () => { try { return JSON.parse(fs.readFileSync(new URL('./skill_
 
 async function inject() {
   while (!(await page.evaluate(() => !!window.__game?.inWorld && !!window.__game.char).catch(() => false))) await sleep(2000);
-  await page.evaluate(([b, k]) => { window.__botBuild = b; window.__botSkills = k; }, [build(), skills()]);
-  console.log(await page.evaluate(src()));
-  // Optional overlay (F10): skipped when missing or broken, never blocks the bot.
-  try { console.log(await page.evaluate(fs.readFileSync(new URL('./viz.page.js', import.meta.url), 'utf8'))); }
-  catch (e) { console.log('viz non chargée :', e.message.split('\n')[0]); }
+  const necro = await page.evaluate(() => window.__game.char.ch.cls === 'necromancer');
+  if (cmd !== 'assist' || necro) {
+    await page.evaluate(([b, k]) => { window.__botBuild = b; window.__botSkills = k; }, [build(), skills()]);
+    console.log(await page.evaluate(src()));
+    // Optional overlay (F10): skipped when missing or broken, never blocks the bot.
+    try { console.log(await page.evaluate(fs.readFileSync(new URL('./viz.page.js', import.meta.url), 'utf8'))); }
+    catch (e) { console.log('viz non chargée :', e.message.split('\n')[0]); }
+  }
+  try { console.log(await page.evaluate(fs.readFileSync(new URL('./assist.page.js', import.meta.url), 'utf8'))); }
+  catch (e) { console.log('assist non chargé :', e.message.split('\n')[0]); }
   if (cmd === 'start') await page.evaluate(() => window.__bot.start());
 }
 
@@ -35,7 +41,7 @@ process.on('SIGINT', quit);
 
 await inject();
 for (;;) {
-  const s = await page.evaluate(() => window.__bot?.status() ?? null).catch(() => null);
+  const s = await page.evaluate(a => a ? (window.__assist ? window.__bot?.status() ?? { assist: window.__assist.opt } : null) : window.__bot?.status() ?? null, cmd === 'assist').catch(() => null);
   if (!s) { console.log(new Date().toLocaleTimeString('fr-FR'), 'bot déchargé (page rechargée), réinjection'); await inject(); continue; }
   console.log(new Date().toLocaleTimeString('fr-FR'), JSON.stringify(s));
   // Fight dataset: one JSON line per fight summary drained from the page.
