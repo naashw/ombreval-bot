@@ -20,6 +20,9 @@
   ad.leash ??= {}; ad.avoid ??= {}; ad.spots ??= []; ad.recentDeaths ??= [];
   // reach: kind -> learned strike reach and attack mix; kmargin: kind -> learned kite margin (see swingTick).
   ad.reach ??= {}; ad.kmargin ??= {};
+  // Open expeditions: the server keeps an instance open some time after we leave it and caps how many are open.
+  // Prior 2 open, 5 min; both are re-read from its refusal toast (see expToast). dunOpen: [{ id, at: leave time }].
+  ad.exp ??= { max: 2, ms: 5 * 60000 }; ad.dunOpen ??= [];
   // Quest model: reward as a fraction of the level xp, seconds per objective unit, talk and quest durations.
   ad.qx ??= { frac: 0.4, n: 0, rate: {}, dur: 600000, dn: 0, talk: 5000, tn: 0 };
   delete ad.offset;
@@ -188,7 +191,7 @@
       const recent = ad.recentDeaths.filter(d => d.zone === z.name && t - d.t < RECENT_MS).length * dc / RECENT_MS * 3.6e6;
       const qb = holdsQuest(z, q) ? questBonus(q, z, s) : 0;
       const mean = (prior * pms + armNet(s, xg, dc) * s.ms) / (pms + s.ms) - recent + qb;
-      const lvlOk = z.dun ? z.dun.d.level <= g.level && !(DUN_SKIP.get(z.dun.d.id) > Date.now())
+      const lvlOk = z.dun ? z.dun.d.level <= g.level && !(DUN_SKIP.get(z.dun.d.id) > Date.now()) && !expFull(z.dun.d.id)
         : z.quest ? (q.minLevel ?? 1) <= g.level - 1 : z.lvl[0] <= g.level;
       return { z, mean, qb, n: (pms + s.ms) / ZONE_DWELL, ok: lvlOk && (Math.abs(i - base) <= 2 || qb > 0) };
     });
@@ -201,10 +204,22 @@
     st.zonePick = arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk;
     return st.zonePick;
   }
+  // Expeditions still open (left less than ad.exp.ms ago, or the one we stand in); a new dungeon needs a free slot.
+  const openExp = () => ad.dunOpen.filter(o => Date.now() - o.at < ad.exp.ms).map(o => o.id).concat(g.dungeon ? [g.dungeon.def.id] : []);
+  const expFull = id => { const o = openExp(); return o.length >= ad.exp.max && !o.includes(id); };
+  // Refusal toast ("Vous avez déjà 2 expéditions ouvertes : elles se referment 5 minutes après votre départ."):
+  // learn the cap and delay, and fill the open list up to the cap so no new door is tried before one closes.
+  function expToast(m) {
+    const n = /(\d+) exp[ée]ditions? ouvertes?/i.exec(m), mn = /(\d+) minutes?/i.exec(m);
+    if (!n) return;
+    ad.exp.max = +n[1]; if (mn) ad.exp.ms = +mn[1] * 60000;
+    while (openExp().length < ad.exp.max) ad.dunOpen.push({ id: '?', at: Date.now() });
+    st.zonePick = null; saveAd();
+  }
   // Door of the picked dungeon arm, when it is still enterable.
   const armDoor = () => {
     const o = !g.dungeon && st.zonePick?.dun;
-    return o && o.d.level <= g.level && !(DUN_SKIP.get(o.d.id) > Date.now()) ? o : null;
+    return o && o.d.level <= g.level && !(DUN_SKIP.get(o.d.id) > Date.now()) && !expFull(o.d.id) ? o : null;
   };
   let LEASH = 45;
 
@@ -1616,6 +1631,10 @@
   }
   function decideRaw() {
     const me = g.sim, hpPct = g.hp / g.life;
+    // Left an instance (run over, bail or death): it stays open ad.exp.ms from now.
+    const dunId = g.dungeon?.def.id ?? null;
+    if (st.dunIn && st.dunIn !== dunId) { ad.dunOpen = ad.dunOpen.filter(o => o.id !== st.dunIn && Date.now() - o.at < ad.exp.ms).concat({ id: st.dunIn, at: Date.now() }); saveAd(); }
+    st.dunIn = dunId;
     if (g.dungeon) { st.home = { x: me.x, z: me.z }; st.zone = 'donjon : ' + g.dungeon.def.name; LEASH = 30; }
     else if (!st.pinned) {
       // The quest area narrows the home only when the arm holding it won the UCB (value, deaths included).
@@ -1828,6 +1847,7 @@
         st.lastXpEv = { a, at: now() };
       }
       else if (ev.e === 'tele') addTele(ev);
+      else if (ev.e === 'toast' && typeof ev.m === 'string') expToast(ev.m);
       else if (ev.e === 'quest') {
         st.questEventAt = now(); st.quests = (st.quests ?? 0) + 1; st.lastQuest = `${ev.q}:${ev.k}`;
         if (ev.k === 'start') (st.qStart ??= {})[ev.q] = now();
@@ -1933,6 +1953,7 @@
       pullStats: Object.fromEntries(Object.entries(ad.pull).map(([k, v]) => [k, `${(v.xp / Math.max(1, v.ms) * 1000).toFixed(2)} xp/s (${v.n})`])),
       zoneUcb: (st.zoneArms ?? []).map(a => `${a.z.name} ${Math.round(a.mean)}`),
       xph: Object.fromEntries(Object.entries(ad.zones).map(([k, v]) => [k, `${Math.round(v.xp / Math.max(v.ms, 60000) * 3600000)} xp/h, ${v.deaths} morts`])),
+      expeditions: { open: openExp(), max: ad.exp.max, min: ad.exp.ms / 60000 },
       dungeon: st.dun ? { id: st.dun.id, phase: st.dun.phase, room: st.dun.room, deaths: st.dun.deaths, min: Math.round((now() - st.dun.at) / 60000) } : null,
       dangers: ad.spots.map(x => `${x.kind} ${Math.round((x.until - Date.now()) / 1000)}s r${Math.round(x.r)}`), avoid: ad.avoid,
       leash: Object.fromEntries(Object.entries(ad.leash).map(([k, v]) => [k, `${v.d.toFixed(1)} (${v.n})`])),
