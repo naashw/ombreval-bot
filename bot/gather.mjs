@@ -1,13 +1,15 @@
 // Usage: node gather.mjs [load|start|stop|status]
-// Attaches to Brave (debug port 9222), injects the gathering bot (paused unless `start`), prints its status every 10 s,
+// Attaches to Brave (debug port CDP_PORT, default 9222), injects the gathering bot (paused unless `start`), prints its status every 10 s,
 // and re-injects it after a page reload. Ctrl+C pauses it.
 import { chromium } from 'playwright';
 import fs from 'fs';
 
+const PORT = process.env.CDP_PORT ?? 9222;
+
 const cmd = process.argv[2] ?? 'load';
-const browser = await chromium.connectOverCDP('http://localhost:9222');
+const browser = await chromium.connectOverCDP(`http://localhost:${PORT}`);
 const page = browser.contexts().flatMap(c => c.pages()).find(p => p.url().includes('ombreval'));
-if (!page) { console.error('Onglet Ombreval introuvable dans Brave (port 9222)'); process.exit(1); }
+if (!page) { console.error(`Onglet Ombreval introuvable dans Brave (port ${PORT})`); process.exit(1); }
 
 if (cmd === 'stop' || cmd === 'status') {
   console.log(await page.evaluate(c => window.__gather ? (c === 'stop' ? (window.__gather.stop(), 'arrêté') : window.__gather.status()) : 'bot métiers non chargé', cmd));

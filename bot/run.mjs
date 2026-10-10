@@ -1,14 +1,16 @@
 // Usage: node run.mjs [start|load|assist|stop|status]
 // assist: only the manual-play assist panel (F6); the bot is loaded paused when the class is supported (necromancer, shaman).
-// Attaches to Brave (debug port 9222), injects the bot, prints its status every 10 s,
+// Attaches to Brave (debug port CDP_PORT, default 9222), injects the bot, prints its status every 10 s,
 // and re-injects it after a page reload (game update, reconnect).
 import { chromium } from 'playwright';
 import fs from 'fs';
 
+const PORT = process.env.CDP_PORT ?? 9222;
+
 const cmd = process.argv[2] ?? 'start';
-const browser = await chromium.connectOverCDP('http://localhost:9222');
+const browser = await chromium.connectOverCDP(`http://localhost:${PORT}`);
 const page = browser.contexts().flatMap(c => c.pages()).find(p => p.url().includes('ombreval'));
-if (!page) { console.error('Onglet Ombreval introuvable dans Brave (port 9222)'); process.exit(1); }
+if (!page) { console.error(`Onglet Ombreval introuvable dans Brave (port ${PORT})`); process.exit(1); }
 
 if (cmd === 'stop' || cmd === 'status') {
   console.log(await page.evaluate(c => window.__bot ? (c === 'stop' ? (window.__bot.stop(), 'arrêté') : window.__bot.status()) : 'bot non chargé', cmd));
