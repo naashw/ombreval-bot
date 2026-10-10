@@ -24,7 +24,7 @@ if (cmd === 'stop' || cmd === 'status') {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const src = () => fs.readFileSync(new URL('./bot.page.js', import.meta.url), 'utf8');
 // Per-class data files: build plan, then skill/gear numbers (the bot falls back to inline defaults when missing or invalid).
-const FILES = { necromancer: ['build.json', 'skill_values.json'], shaman: ['shaman_build.json', 'shaman_skills.json'] };
+const FILES = { necromancer: ['build.json', 'skill_values.json'], shaman: ['shaman_build.json', 'shaman_skills.json'], reaper: ['reaper_build.json', 'reaper_skills.json'] };
 const build = cls => JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][0], import.meta.url), 'utf8'));
 const skills = cls => { try { return JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][1], import.meta.url), 'utf8')); } catch { return null; } };
 
