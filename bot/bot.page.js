@@ -1447,10 +1447,28 @@
   }
 
   // One decision per sim tick: returns movement, aim point and bar slots to hold.
+  // Journal: one line per change of action, goal, zone, dungeon phase or level (drained by run.mjs to journal.jsonl).
+  // TODO(ceiling): 3000-line ring when no runner drains it; older lines are dropped.
+  const journal = [];
+  function jlog(ev, extra) {
+    const me = g.sim;
+    journal.push({ t: Date.now(), ev, lvl: g.level, xp: g.char.ch.xp, hp: Math.round(100 * g.hp / g.life), pot: g.char.potions,
+      pos: [Math.round(me.x), Math.round(me.z)], goal: st.goal ?? null, zone: st.zone ?? null, doing: st.last, ...extra });
+    if (journal.length > 3000) journal.shift();
+  }
+  function journalTick() {
+    const k = [st.last, st.goal, st.zone, st.dun?.phase, g.level].join('|');
+    if (k === st.jKey) return;
+    const ev = g.level !== st.jLvl && st.jLvl != null ? 'niveau' : st.zone !== st.jZone ? 'zone' : st.dun?.phase !== st.jPh ? 'donjon' : 'action';
+    st.jKey = k; st.jLvl = g.level; st.jZone = st.zone; st.jPh = st.dun?.phase;
+    jlog(ev, { kills: st.kills, dun: st.dun ? { id: st.dun.id, phase: st.dun.phase, room: st.dun.room } : undefined,
+      retreat: st.retreat?.why, mobs: monsters().filter(m => dist(m.pos, g.sim) < 15).map(m => `${m.def?.kind}${m.level}${m.elite ? 'E' : ''}`).slice(0, 8) });
+  }
   function decide() {
     const d = decideRaw();
     if (SHAMAN) shForms(d);
     d.move = unstick(d.move);
+    try { journalTick(); } catch {}
     return d;
   }
   // Shaman toggles are pressed once: the key stays down only until the shift starts (cd up), the form changes or
@@ -1658,6 +1676,7 @@
         // Snapshot what killed us, for tuning.
         st.lastDeath = [...g.entities.visibleMonsters()].filter(m => !m.dead && dist(m.pos, g.sim) < 12)
           .map(m => `${m.def?.kind}${m.level}${m.elite ? 'E' : ''}`).join(' ') + ` | nuit:${g.time && g.ui?.night ? 1 : 0}`;
+        jlog('mort', { killers: st.lastDeath });
       }
       if (now() - st.deadSince > 3000) { g.actions.respawn(); st.deadSince = now(); }
       st.last = 'mort';
@@ -1778,6 +1797,7 @@
       delete window.__bot;
     },
     drainFights: () => fights.splice(0),
+    drainJournal: () => journal.splice(0),
     // Read-only snapshot for viz.page.js.
     debug: () => ({
       navs: Object.fromEntries(Object.entries(st.navs ?? {}).map(([k, n]) => [k, { goal: n.goal, pts: n.pts, i: n.i, at: n.progressAt }])),
