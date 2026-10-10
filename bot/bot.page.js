@@ -19,6 +19,17 @@
   // Quest model: reward as a fraction of the level xp, seconds per objective unit, talk and quest durations.
   ad.qx ??= { frac: 0.4, n: 0, rate: {}, dur: 600000, dn: 0, talk: 5000, tn: 0 };
   delete ad.offset;
+  // New game build (bundle URL changes): what we learned may no longer hold, so shrink every count to a few samples.
+  // Means and rates stay as priors; fresh fights then outweigh them within minutes.
+  const gameVer = [...document.scripts].map(x => x.src).find(u => /assets\/index/.test(u)) ?? '';
+  if (gameVer && ad.gameVer && ad.gameVer !== gameVer) {
+    for (const z of Object.values(ad.zones)) for (const k of ['xp', 'ms', 'deaths', 'kills', 'gold', 'runs']) if (z[k]) z[k] *= 0.1;
+    for (const e of Object.values(ad.enemy)) e.n = Math.min(e.n, 2);
+    for (const e of Object.values(ad.pull)) if (e) for (const k of ['xp', 'ms', 'n']) if (e[k]) e[k] *= 0.1;
+    Object.assign(ad, { leash: {}, spots: [], avoid: {}, recentDeaths: [], deaths: [], caution: 0, dpsN: Math.min(ad.dpsN, 3), deathN: Math.min(ad.deathN ?? 0, 2) });
+    if (ad.dunCd) ad.dunCd = {};
+  }
+  ad.gameVer = gameVer;
   const saveAd = () => { try { localStorage.setItem(AD_KEY, JSON.stringify(ad)); } catch {} };
   const zoneStat = name => (ad.zones[name] ??= { xp: 0, ms: 0, deaths: 0 });
   // Cheap knobs tuned by A/B runs (variant B active during its half of a run).
@@ -46,7 +57,7 @@
   }
 
   // Skill/essence/gear numbers: skill_values.json (window.__botSkills, injected by run.mjs) over inline defaults.
-  // dmgPct/splashPct are % of the average weapon hit; castSec for bonebolt/blight is at assumptions.aps.
+  // dmgPct/splashPct are % of Power (crit/execute included as `hit`); castSec for bonebolt/blight is at assumptions.aps.
   const SV_DEFAULT = {
     assumptions: { aps: 1.25 },
     skills: {
@@ -72,7 +83,18 @@
     if (src.gear?.formula) o.gear = src.gear;
     return o;
   })();
-  const sk = id => SV.skills[id] ?? {};
+  // Non-classic weapon bases redefine the clicks (bundle Vh.necromancer): slot 0 (bar 'bonebolt') and slot 1 (bar 'blight')
+  // fire the weapon's LMB (cast 1/aps) and RMB (fixed dur). % of Power = coef x the classic skill (165 / 300); RMB costs blight's.
+  const WPN = {
+    bonewand: { aps: 1.25 },
+    deathstaff: { aps: 0.9, // Crâne hurlant (missile 15 m, burst 1.5 m, fear 0.5 s) / Charnier (5 m circle, corpse burst)
+      bonebolt: { dmgPct: 155.4, splashPct: 155.4, radius: 1.5, range: 15, sec: 1 / 0.9 },
+      blight: { dmgPct: 345.3, splashPct: 345.3, radius: 5, range: 14, sec: 0.5, corpse: false } },
+    sacrdagger: { aps: 1.6, // Saignée rituelle (60° cone 2 m, heals per hit) / Lien de sang (3 s tether, half heals)
+      bonebolt: { dmgPct: 248.3, splashPct: 248.3, radius: 2, range: 2, sec: 1 / 1.6 },
+      blight: { dmgPct: 645, splashPct: 0, radius: 1, range: 10, sec: 0.4, corpse: false } },
+  };
+  const sk = (id, base = g.char.eq?.weapon?.base) => ({ ...SV.skills[id], ...WPN[base]?.[id] });
   const PLAYER_SPEED = 5.28;
   const ATTACK_STATES = ['chase', 'windup', 'strike'];
   // TODO(ceiling): monster damage level scaling is guessed (+10%/level); learned per-kind values absorb the error.
@@ -180,13 +202,11 @@
   const ready = id => !(g.sim.cds?.[id] > 0);
 
   function monsters() {
-    const out = [];
+    const out = [], ms = meState();
     for (const m of g.entities.visibleMonsters()) {
       if (m.dead || m.hp <= 0) continue;
-      // Inside a dungeon picked for our level, the boss and its guards are fair game.
-      if (!g.dungeon && (m.boss || m.level > g.level + 2)) continue;
-      // Elites (pack leaders) are skipped unless already on us: running is useless, they outrun us.
-      if (m.elite && !(dist(m.pos, g.sim) < 10 && ['chase', 'windup', 'strike'].includes(m.state))) continue;
+      // Bosses, elites and higher levels are targets whenever the engagement model says we win (dungeons: always).
+      if (!g.dungeon && !engage({ hp: m.hp, dps: enemyDps(m), n: 1 }, ms).ok) continue;
       const onUs = dist(m.pos, g.sim) < 10 && ['chase', 'windup', 'strike'].includes(m.state);
       if (!onUs && st.home && dist(m.pos, st.home) > LEASH + 8) continue;
       if (!onUs && inDanger(m.pos)) continue;
@@ -253,12 +273,15 @@
     expireSpots();
     if (g.dungeon) { st.retreat = null; return null; }
     const conv = [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0 && converging(m, dist(m.pos, me)));
-    const strong = conv.filter(m => m.boss || m.level > g.level + 2);
+    // Too strong = the engagement model (learned dps, self-tuned margin) says we lose it alone; no fixed level/boss rule.
+    const strong = conv.filter(m => !engage({ hp: m.hp, dps: enemyDps(m), n: 1 }, meState()).ok);
     const f = st.fight;
     const burn = !!f && conv.length > 0 && burnDisengage(f.pot0 - g.char.potions, g.char.potions, f.hpTot,
       [...f.seen].reduce((a, id) => { const m = g.entities.monsters.get(id)?.view; return a + (m && !m.dead ? Math.max(0, m.hp) : 0); }, 0));
-    const crowd = burn || conv.length > 0 && !engage({ hp: conv.reduce((a, m) => a + m.hp, 0), dps: conv.reduce((a, m) => a + enemyDps(m), 0), n: conv.length },
-      { ...meState(), margin: 1 }).ok;
+    const eng = conv.length > 0 && engage({ hp: conv.reduce((a, m) => a + m.hp, 0), dps: conv.reduce((a, m) => a + enemyDps(m), 0), n: conv.length },
+      { ...meState(), margin: 1 });
+    if (eng) st.lastEng = { ttk: +eng.ttk.toFixed(1), ttd: +eng.ttd.toFixed(1), my: Math.round(myDps()), kinds: conv.map(m => `${m.def?.kind}${m.level}:${Math.round(enemyDps(m))}`) };
+    const crowd = burn || eng && !eng.ok;
     if (strong.length || crowd) {
       const r = st.retreat ??= { ids: new Map(), t0: now(), target: null, why: strong.length ? 'ennemi trop fort' : burn ? 'potions brûlées' : `foule de ${conv.length}` };
       for (const m of crowd ? conv : strong) if (!r.ids.has(m.id)) r.ids.set(m.id, m.state);
@@ -336,40 +359,46 @@
     }
   }
 
-  // --- Our stat sheet (analyst formula, skill_values.json "gear"): hit, aps, dps index, effective HP.
-  function sheet(swap) {
-    const lvl = g.level, eq = { ...(g.char.eq ?? {}) };
-    if (swap) eq[swap.slot] = swap;
-    const s = { ...(g.char.ch.alloc ?? {}) };
-    let armorBase = 0;
+  // --- Our stat sheet (bundle yF): Power = (0.04*lvlBase + item pow) x mult, life = (lvlBase + item hp) x mult, where
+  // lvlBase = 100 + (20*lvl)^1.2 and mult (class frame, talents, boons) is read off the game's sheet g.stats; affixes are
+  // flat % points (caps CAPS). hit = Power x crit x execute; aps is fixed by the weapon base (haste only speeds spells).
+  const UPG = [0, 4, 8, 12, 17, 22, 28, 35, 43, 52, 62]; // item +N: hp/pow x(1+UPG/100), affixes x(1+UPG/200)
+  const CAPS = { crit: 60, critDmg: 300, guard: 60, execute: 75, leech: 25, haste: 50, cdr: 50 };
+  function gearSum(eq) {
+    const o = { hp: 0, pow: 0 };
     for (const it of Object.values(eq)) {
       if (!it) continue;
-      armorBase += it.armor ?? 0;
-      for (const f of it.affixes ?? []) s[f.stat] = (s[f.stat] ?? 0) + f.value;
+      const u = UPG[Math.min(10, it.up ?? 0)];
+      o.hp += Math.round((it.hp ?? 0) * (1 + u / 100)); o.pow += Math.round((it.pow ?? 0) * (1 + u / 100));
+      for (const f of it.affixes ?? []) o[f.stat] = (o[f.stat] ?? 0) + f.value * (1 + u / 200);
     }
-    const v = k => s[k] ?? 0, w = eq.weapon;
-    const avgHit = w ? (w.dmgMin + w.dmgMax) / 2 + v('flatDmg') : 5;
-    const mult = 1 + (5 * (lvl - 1) + 0.5 * v('pow') + v('dmgPct')) / 100;
-    const aps = (w?.aps ?? 1.25) * (1 + (v('atkSpd') + 0.15 * (lvl - 1)) / 100 + 0.002 * Math.min(v('agi'), 300));
-    const critF = 1 + Math.min(60, 5 + 0.1 * (lvl - 1) + 0.15 * v('prec') + v('crit')) / 100 * (50 + 1.5 * v('fer') + v('critDmg')) / 100;
-    const hit = avgHit * mult * critF * (1 + 0.35 * v('execute') / 100);
-    const gen = 1 + (v('furyGen') + 0.5 * (lvl - 1) + 0.5 * v('wil')) / 100;
-    const boltDur = sk('bonebolt').castSec * SV.assumptions.aps;
-    const surplus = (4 * aps / boltDur + 2) * gen - 0.75;
-    const dps = hit * (sk('bonebolt').dmgPct * aps / boltDur + SV.essence.valuePerPoint * surplus + 165) / 100;
-    const life = (150 + 22 * (lvl - 1) + 4 * v('vit') + v('life')) * (1 + v('lifePct') / 100) * 0.9;
-    const armor = (5 + 2 * (lvl - 1) + armorBase + v('armor') + 2 * v('tgh')) * 0.85;
-    const red = Math.min(0.75, armor / (armor + 25 + 14 * lvl));
-    const ehp = life / (1 - red) / (1 - Math.min(40, v('dr')) / 100);
+    return o;
+  }
+  function sheet(swap) {
+    const S = g.stats, cur = g.char.eq ?? {}, eq = { ...cur };
+    if (swap) eq[swap.slot] = swap;
+    const lb = 100 + (20 * Math.max(1, g.char.ch.level)) ** 1.2, a = gearSum(eq), b = gearSum(cur);
+    // swap = what we wear (g.stats) plus the item delta
+    const v = k => Math.min(CAPS[k], Math.max(0, (k === 'cdr' ? S.cdr * 100 : S[k] ?? 0) + (a[k] ?? 0) - (b[k] ?? 0)));
+    const power = S.power / (0.04 * lb + b.pow) * (0.04 * lb + a.pow), life = S.life / (lb + b.hp) * (lb + a.hp);
+    // TODO(ceiling): execute assumed to boost ~35% of our damage (share landing under 35% hp); fit from fight data.
+    const hit = power * (1 + v('crit') / 100 * v('critDmg') / 100) * (1 + 0.35 * v('execute') / 100);
+    const base = eq.weapon?.base, aps = WPN[base]?.aps ?? S.aps, bolt = sk('bonebolt', base);
+    const boltSec = bolt.sec ?? bolt.castSec * SV.assumptions.aps / aps;
+    const surplus = (4 / boltSec + 2) * (S.furyGen ?? 1.1) - 0.75;
+    const dps = hit * (bolt.dmgPct / boltSec + SV.essence.valuePerPoint * surplus + 165 / (1 - v('cdr') / 100)) / 100;
+    // TODO(ceiling): leech counted as 5 s of healing at our dps; guard ignores enemy penetration.
+    const ehp = life / (1 - v('guard') / 100) + v('leech') / 100 * dps * 5;
     return { hit, aps, dps, ehp };
   }
   const curSheet = () => {
     if (!st.sheet || now() - st.sheetAt > 2000) { st.sheet = sheet(); st.sheetAt = now(); }
     return st.sheet;
   };
-  // Cast time: bonebolt/blight scale with attack speed (dur/aps), the other spells are fixed.
+  // Cast time: weapon clicks use their own (sec); classic bonebolt/blight scale with attack speed (dur/aps); other spells
+  // are fixed but shortened by haste (aN: dur/(1+haste/100)).
   const castSec = id => (id === 'bonebolt' || id === 'blight')
-    ? (sk(id).castSec ?? 0.58) * SV.assumptions.aps / curSheet().aps : sk(id).castSec ?? 0.6;
+    ? sk(id).sec ?? (sk(id).castSec ?? 0.58) * SV.assumptions.aps / curSheet().aps : (sk(id).castSec ?? 0.6) / (1 + (g.stats?.haste ?? 0) / 100);
   const SKEL_DPS = 0.231, GOLEM_DPS = 0.45; // weapon hits per second (30% every 1.3 s, 90% every 2 s)
   function priorMyDps() {
     const { hit } = curSheet();
@@ -575,7 +604,7 @@
       let val = 0, aim = null;
       if (id === 'bonebolt' || id === 'blight') {
         aim = bestAoe(mobs, s.range ?? 12, s.radius ?? 2);
-        val = dmgAt(mobs, aim, s.radius ?? 2, pct, spl, hit) + (id === 'blight' && aim ? corpseVal : 0);
+        val = dmgAt(mobs, aim, s.radius ?? 2, pct, spl, hit) + (id === 'blight' && aim && s.corpse !== false ? corpseVal : 0);
       } else if (id === 'raise' && missing > 0) {
         const c = corpsesNear(me, s.range ?? 14);
         if (c.best) { aim = c.best; val = Math.min(2, missing, corpsesNear(c.best, s.radius ?? 4.5).n) * corpseVal; }
@@ -770,21 +799,16 @@
   }
 
   // Gear: equip better items from the bag, keep future upgrades, sell the rest at Bertrand.
-  const AFFIX_W = { vit: 2, tgh: 1.7, pow: 1.2, wil: 0.6, prec: 0.6, fer: 0.4, agi: 0.4 };
   const myWeapons = () => Object.keys(SV.gear?.weaponBases ?? {}).filter(k => k !== 'rule').concat(SV.gear ? [] : ['bonewand', 'deathstaff']);
   const reqLvl = it => Math.max(1, Math.min(200, Number.isFinite(it.ilvl) ? (Math.floor(it.ilvl) === 31 ? 30 : Math.floor(it.ilvl)) : 1));
-  // Analyst score (dps x sqrt(EHP) of the whole sheet with `it` worn) when skill_values.json has a gear
-  // section, else the old per-item affix weights.
+  // Score: dps x sqrt(EHP) of the whole sheet with `it` worn.
   function gearScore(it) {
     if (!it) return 0;
     if (it.slot === 'weapon' && !myWeapons().includes(it.base)) return -1;
-    if (SV.gear) { const s = sheet(it); return s.dps * Math.sqrt(s.ehp); }
-    const aff = (it.affixes ?? []).reduce((a, f) => a + (AFFIX_W[f.stat] ?? 0.3) * f.value, 0);
-    if (it.slot === 'weapon') return ((it.dmgMin + it.dmgMax) / 2) * it.aps * 3 + aff;
-    return (it.armor ?? 0) + aff;
+    const s = sheet(it); return s.dps * Math.sqrt(s.ehp);
   }
-  // Score of what we wear in that slot (empty slot: the sheet without it, or 0 with the old score).
-  const wornScore = slot => SV.gear ? (g.char.eq?.[slot] ? gearScore(g.char.eq[slot]) : (() => { const s = sheet(); return s.dps * Math.sqrt(s.ehp); })()) : gearScore(g.char.eq?.[slot]);
+  // Score of what we wear in that slot (empty slot: the sheet as is).
+  const wornScore = slot => { const s = sheet(); return s.dps * Math.sqrt(s.ehp); };
   const beats = it => it && gearScore(it) > wornScore(it.slot) * 1.02;
   // Future upgrades to keep: best per (slot, required level) among items beating what we wear, then the best 2 per slot.
   function keepers() {
@@ -1481,6 +1505,10 @@
       return origBuild(aimPt);
     }
     st.deadSince = 0;
+    // Hidden window: the browser drops to ~1 fps, so we can neither fight nor learn; hold still until frames return.
+    const gap = now() - (st.buildAt ?? now()); st.buildAt = now();
+    st.frameGap = ema(st.frameGap ?? gap, Math.min(gap, 2000), 8);
+    if (st.frameGap > 150) { setKeys([]); st.last = 'ralenti (fenêtre cachée), en attente'; return origBuild(aimPt); }
     let d;
     try { d = decide(); } catch (e) { st.last = 'erreur ' + e.message; d = { move: [0, 0], aim: null, slots: [] }; }
     setKeys(d.slots);
@@ -1598,7 +1626,7 @@
     status: () => ({
       on: st.on, cls: g.char.ch.cls, lvl: g.char.ch.level, xp: g.char.ch.xp,
       hp: `${g.hp}/${g.life}`, potions: g.char.potions, kills: st.kills, deaths: st.deaths, rolls: st.rolls ?? 0, lastDeath: st.lastDeath,
-      min: Math.round((now() - (st.t0 || now())) / 60000), doing: st.last, retreat: st.retreat ? { why: st.retreat.why, chasers: st.retreat.ids.size, target: st.retreat.target } : null, retreats: st.retreats ?? 0, servants: servantCount(), talents: Object.keys(g.char.ch.tree ?? {}).length,
+      min: Math.round((now() - (st.t0 || now())) / 60000), doing: st.last, retreat: st.retreat ? { why: st.retreat.why, chasers: st.retreat.ids.size, target: st.retreat.target } : null, retreats: st.retreats ?? 0, eng: st.lastEng ?? null, servants: servantCount(), talents: Object.keys(g.char.ch.tree ?? {}).length,
       goal: st.goal, moves: st.moves, goalSwitches: st.goals ?? 0, unsticks: st.unsticks ?? 0, questLabel: st.quest?.label ?? null, questEvents: st.quests ?? 0, lastQuest: st.lastQuest,
       bound: g.char.bound ?? null, ways: g.char.ways?.length ?? 0, wayTrips: st.wayTrips ?? 0, binds: st.binds ?? 0,
       loots: st.loots ?? 0, equips: st.equips ?? 0, sold: st.sold ?? 0, claims: st.claims ?? 0, gold: g.char.gold, teleDodges: st.teleDodges ?? 0, caution: ad.caution, bought: st.bought ?? 0,
