@@ -29,7 +29,7 @@
     const v1 = s && s.v !== 2, f = feats(v1 ? s : s?.f), ui = v1 ? { x: s.x, y: s.y } : s?.ui ?? {};
     return {
       v: 2, mode: !v1 && MODES.includes(s?.mode) ? s.mode : presetOf(f), f, custom: feats(v1 ? f : s?.custom ?? f),
-      bot: { autoTalents: !v1 && s?.bot?.autoTalents === true },
+      bot: { autoTalents: !v1 && s?.bot?.autoTalents === true, vizPath: !v1 && !!s?.bot?.vizPath, vizMap: !v1 && !!s?.bot?.vizMap },
       ui: { x: ui.x ?? null, y: ui.y ?? null, min: !!ui.min, sec: { ...ui.sec } },
     };
   }
@@ -39,6 +39,9 @@
   // Read by bot.page.js before learning talents.
   const pushBotOpts = () => { window.__botOpts = { ...(window.__botOpts || {}), autoTalents: S.bot.autoTalents }; };
   pushBotOpts();
+  // A* overlay (viz.page.js): bit 1 on-screen path, bit 2 big map; viz reads the bot's nav, so it shows in Complet.
+  const pushViz = () => window.__viz?.setMode?.((S.bot.vizPath ? 1 : 0) | (S.bot.vizMap ? 2 : 0));
+  pushViz();
   const now = () => performance.now();
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   // Bar slot keys (game defaults, zj in the bundle); slot 0/1 are the mouse buttons.
@@ -465,7 +468,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     ['butin', 'Butin', [['loot', 'Ramassage auto', 'asp'], ['lootR', 'Rayon', 'asp', 'loot', [1, 10, 0.5, ' m']],
       ['lootGear', 'Aussi l\'équipement', 'ap', 'loot'], ['lootWalk', 'Détour si zone sûre (6 m)', 'ap', 'loot']]],
     ['combat', 'Combat', [['auto', 'Sorts auto', 'p']]],
-    ['infos', 'Infos', [['dash', 'Tableau de bord', 'ap']]],
+    ['infos', 'Infos', [['dash', 'Tableau de bord', 'ap'], ['vizPath', 'Chemin A* à l\'écran', 'cmasp'], ['vizMap', 'Grande carte (A*)', 'cmasp']]],
     ['bots', 'Bots', [['autoTalents', 'Talents auto', 'cp']]],
   ];
   const CHEV = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -552,7 +555,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
       const k = r.dataset.row, el = r.querySelector('input');
       r.hidden = !r.dataset.m.includes(mc);
       r.classList.toggle('off', !!r.dataset.par && !opt[r.dataset.par]);
-      if (k === 'autoTalents') el.checked = S.bot.autoTalents;
+      if (k === 'autoTalents' || k === 'vizPath' || k === 'vizMap') el.checked = S.bot[k];
       else if (el.type === 'checkbox') el.checked = !!opt[k];
       else { el.value = opt[k]; r.querySelector('output').textContent = fmtV(opt[k], r.querySelector('output').dataset.u); }
     }
@@ -626,6 +629,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     const k = el.dataset.k;
     if (!k) return;
     if (k === 'autoTalents') { S.bot.autoTalents = el.checked; pushBotOpts(); save(); return; }
+    if (k === 'vizPath' || k === 'vizMap') { S.bot[k] = el.checked; pushViz(); save(); return; }
     if (el.type === 'checkbox') opt[k] = el.checked;
     else { const v = parseFloat(el.value); if (!Number.isFinite(v)) return; opt[k] = Math.max(+el.min, Math.min(+el.max, v)); }
     touched(); draw();

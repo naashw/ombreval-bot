@@ -244,6 +244,8 @@
   })();
 
   window.__viz = {
+    // Set by the assist panel (F6): same bits as the F10 cycle.
+    setMode(m) { mode = m & 3; if (!mode) ctx.clearRect(0, 0, cv.width, cv.height); },
     stop() {
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onKey, true);
