@@ -9,9 +9,36 @@
   const OPT_KEY = 'ombreval-assist';
   const DEF = { aim: true, aimAll: false, lead: true, mark: true, pot: false, potPct: 35, radius: 6,
     dodge: false, loot: false, lootR: 4, lootGear: false, lootWalk: false, dash: true,
-    auto: false, autoSlots: [false, false, false, false, false, false, false, false], x: null, y: null };
-  const opt = (() => { try { return { ...DEF, ...JSON.parse(localStorage.getItem(OPT_KEY)) }; } catch { return { ...DEF }; } })();
-  const save = () => { try { localStorage.setItem(OPT_KEY, JSON.stringify(opt)); } catch {} };
+    auto: false, autoSlots: [false, false, false, false, false, false, false, false] };
+  // Modes: complet (full bot), metiers (gathering bot), assist, simple (presets on the main switches), perso (the user's own snapshot).
+  const MODES = ['complet', 'metiers', 'assist', 'simple', 'perso'];
+  const FLAGS = ['aim', 'aimAll', 'lead', 'mark', 'dodge', 'pot', 'loot', 'dash', 'auto'];
+  const PRESET = {
+    assist: { aim: true, aimAll: true, lead: true, mark: true, dodge: true, pot: true, loot: true, dash: true, auto: false },
+    simple: { aim: true, aimAll: false, lead: false, mark: false, dodge: false, pot: false, loot: true, dash: false, auto: false },
+  };
+  const feats = o => {
+    const f = {};
+    for (const k in DEF) f[k] = o?.[k] ?? DEF[k];
+    f.autoSlots = DEF.autoSlots.map((_, i) => !!o?.autoSlots?.[i]);
+    return f;
+  };
+  const presetOf = f => Object.keys(PRESET).find(m => FLAGS.every(k => !!f[k] === PRESET[m][k])) ?? 'perso';
+  // Saved state v2: { v, mode, f (features), custom (Perso snapshot), bot, ui }. v1 was the flat feature object plus x, y.
+  function parseState(s) {
+    const v1 = s && s.v !== 2, f = feats(v1 ? s : s?.f), ui = v1 ? { x: s.x, y: s.y } : s?.ui ?? {};
+    return {
+      v: 2, mode: !v1 && MODES.includes(s?.mode) ? s.mode : presetOf(f), f, custom: feats(v1 ? f : s?.custom ?? f),
+      bot: { autoTalents: !v1 && s?.bot?.autoTalents === true },
+      ui: { x: ui.x ?? null, y: ui.y ?? null, min: !!ui.min, sec: { ...ui.sec } },
+    };
+  }
+  const S = (() => { try { return parseState(JSON.parse(localStorage.getItem(OPT_KEY))); } catch { return parseState(null); } })();
+  const opt = S.f; // feature logic reads opt.* only
+  const save = () => { try { localStorage.setItem(OPT_KEY, JSON.stringify(S)); } catch {} };
+  // Read by bot.page.js before learning talents.
+  const pushBotOpts = () => { window.__botOpts = { ...(window.__botOpts || {}), autoTalents: S.bot.autoTalents }; };
+  pushBotOpts();
   const now = () => performance.now();
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   // Bar slot keys (game defaults, zj in the bundle); slot 0/1 are the mouse buttons.
@@ -90,11 +117,16 @@
     for (let s = 2; s < SLOT_KEYS.length; s++) if (g.char.bar[s] && i.isDown(SLOT_KEYS[s])) return s;
     return -1;
   }
-  // Bot running: it aims and drinks itself. status() is heavy, so read it twice a second.
-  const botOn = () => {
-    if (!window.__bot) return false;
-    if (now() - st.botAt > 500) { st.botAt = now(); try { st.botOn = !!window.__bot.status().on; } catch { st.botOn = false; } }
-    return st.botOn;
+  // Full bot or gathering bot running: every assist feature steps aside. status() is heavy, so read it twice a second.
+  const anyBot = () => {
+    if (!window.__bot && !window.__gather) { st.botOn = st.gatherOn = false; return false; }
+    if (now() - st.botAt > 500) {
+      st.botAt = now();
+      try { st.botS = window.__bot?.status() ?? null; } catch { st.botS = null; }
+      try { st.gatherS = window.__gather?.status() ?? null; } catch { st.gatherS = null; }
+      st.botOn = !!st.botS?.on; st.gatherOn = !!st.gatherS?.on;
+    }
+    return st.botOn || st.gatherOn;
   };
 
   function potion() {
@@ -219,7 +251,7 @@
   const wrapper = aimPt => {
     if (!alive_) return origBuild(aimPt);
     try {
-      if (botOn()) { st.tgt = null; st.aim = null; return origBuild(aimPt); }
+      if (anyBot()) { st.tgt = null; st.aim = null; return origBuild(aimPt); }
       potion();
       if (g.sim.dead || g.hp <= 0) { st.tgt = null; st.aim = null; st.escaping = false; return origBuild(aimPt); }
       const t = now(), me = g.sim, ms = [...g.entities.visibleMonsters()], busy = g.ui.typing || g.ui.modalOpen;
@@ -347,65 +379,294 @@
   }
   raf = requestAnimationFrame(frame);
 
-  // --- panel (F6), styled like the bot HUD, draggable by its title
+  // --- panel (F6): mode switch, options by category, collapsible to a pill, draggable by its header.
+  // Class "menu" makes the game's own overUi test (closest('.panel, .hud-block, .menu')) treat it as UI.
+  const css = document.createElement('style');
+  css.id = 'assist-style';
+  css.textContent = `
+#assist-panel{--k-gold:var(--gold,#e2b54a);--k-title:#ffd890;--k-ink:var(--ink,#ece6da);--k-dim:var(--ink-dim,#c0b8a7);--k-faint:var(--ink-faint,#8f8777);
+--k-line:rgba(221,213,196,.13);--k-on:var(--good,#8fdc8a);--k-ring:0 0 0 2px #000,0 0 0 4px var(--accent-hi,#f4efe5);
+position:fixed;z-index:99999;width:276px;box-sizing:border-box;user-select:none;color:var(--k-ink);
+font:13px/1.3 "Alegreya Sans","Segoe UI",system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums;
+background:rgba(22,23,26,.9);border:1px solid rgba(110,103,90,.75);border-radius:8px;
+box-shadow:0 0 0 1px #000,0 12px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(3px)}
+#assist-panel *{box-sizing:border-box}
+#assist-panel[hidden]{display:none}
+#assist-panel button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+#assist-panel :focus{outline:none}
+#assist-panel :focus-visible{box-shadow:var(--k-ring);border-radius:4px}
+#assist-panel .hd{display:flex;align-items:center;gap:7px;padding:7px 6px 7px 11px;cursor:move}
+#assist-panel .ttl{font:700 13px/1 "Alegreya Sans SC","Alegreya Sans",system-ui,sans-serif;letter-spacing:1.3px;color:var(--k-title)}
+#assist-panel .key{font-size:11px;color:var(--k-faint);border:1px solid var(--k-line);border-radius:3px;padding:1px 4px;line-height:1.2}
+#assist-panel .pt{display:none;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--k-dim)}
+#assist-panel .pt b{color:var(--k-title);font-weight:700}
+#assist-panel .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--k-faint);box-shadow:0 0 0 2px rgba(0,0,0,.5)}
+#assist-panel .dot.on{background:var(--k-on);box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 6px var(--k-on)}
+#assist-panel .dot.as{background:var(--k-gold);box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 6px var(--k-gold)}
+#assist-panel .sp{flex:1}
+#assist-panel .ic{width:22px;height:22px;display:grid;place-items:center;border-radius:4px;color:var(--k-dim)}
+#assist-panel .ic:hover{background:rgba(242,237,226,.08);color:var(--k-ink)}
+#assist-panel .ic svg{width:12px;height:12px;transition:transform .15s}
+#assist-panel.min{width:max-content;max-width:380px;border-radius:999px}
+#assist-panel.min .hd{padding:5px 5px 5px 12px}
+#assist-panel.min .ttl,#assist-panel.min .key,#assist-panel.min .bd{display:none}
+#assist-panel.min .pt{display:block;flex:0 1 auto}
+#assist-panel.min .ic svg{transform:rotate(180deg)}
+#assist-panel .bd{padding:0 10px 10px}
+#assist-panel .seg{display:flex;padding:2px;gap:2px;background:rgba(0,0,0,.35);border:1px solid var(--k-line);border-radius:6px}
+#assist-panel .seg button{flex:1 1 auto;padding:5px 2px;border-radius:4px;font-size:12px;color:var(--k-dim);white-space:nowrap}
+#assist-panel .seg button:hover:not(:disabled){color:var(--k-ink);background:rgba(242,237,226,.06)}
+#assist-panel .seg button[aria-checked=true]{color:#1a1608;background:linear-gradient(180deg,#f0cd78,#c99a3a);font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+#assist-panel .seg button:disabled{opacity:.35;cursor:not-allowed}
+#assist-panel .seg .pp{flex:0 0 auto;padding:5px 6px}
+#assist-panel .hint{margin:7px 1px 2px;font-size:12px;color:var(--k-faint)}
+#assist-panel .act{display:flex;align-items:center;gap:8px;margin-top:8px;padding:7px 9px;border-radius:6px;background:rgba(0,0,0,.25);border:1px solid var(--k-line)}
+#assist-panel .act .tx{flex:1;min-width:0;color:var(--k-dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#assist-panel .run{flex:none;padding:3px 10px;border-radius:4px;border:1px solid rgba(110,103,90,.9);background:rgba(242,237,226,.06);font-size:12px;font-weight:700;color:var(--k-title)}
+#assist-panel .run:hover{background:rgba(242,237,226,.14)}
+#assist-panel section{margin-top:8px;border-top:1px solid var(--k-line);padding-top:6px}
+#assist-panel .sh{display:flex;align-items:center;gap:6px;width:100%;padding:2px 1px;text-align:left;
+font:700 12px/1.2 "Alegreya Sans SC","Alegreya Sans",system-ui,sans-serif;letter-spacing:1.2px;color:var(--k-title)}
+#assist-panel .sh svg{width:9px;height:9px;color:var(--k-faint);transition:transform .15s}
+#assist-panel .sh[aria-expanded=false] svg{transform:rotate(-90deg)}
+#assist-panel .sh .n{margin-left:auto;font:12px "Alegreya Sans",system-ui,sans-serif;letter-spacing:0;color:var(--k-faint)}
+#assist-panel .sb{padding-top:2px}
+#assist-panel .sh[aria-expanded=false]+.sb{display:none}
+#assist-panel .r{display:flex;align-items:center;gap:8px;min-height:25px;padding:0 1px;cursor:pointer}
+#assist-panel .r.sub{padding-left:14px;color:var(--k-dim)}
+#assist-panel .r.off,#assist-panel [data-slots].off{opacity:.42}
+#assist-panel .r[hidden],#assist-panel section[hidden],#assist-panel .act[hidden]{display:none}
+#assist-panel .lb{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#assist-panel .lb i{font-style:normal;color:var(--k-faint);margin-right:5px}
+#assist-panel input.sw{appearance:none;-webkit-appearance:none;flex:none;width:30px;height:17px;margin:0;border-radius:999px;cursor:pointer;position:relative;
+background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:background .15s,border-color .15s}
+#assist-panel input.sw::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--k-dim);transition:transform .15s,background .15s}
+#assist-panel input.sw:checked{background:rgba(226,181,74,.3);border-color:var(--k-gold)}
+#assist-panel input.sw:checked::after{transform:translateX(13px);background:var(--k-title)}
+#assist-panel input.sw:focus-visible{box-shadow:var(--k-ring)}
+#assist-panel input[type=range]{flex:0 0 96px;width:96px;margin:0;accent-color:var(--k-gold);cursor:pointer;height:14px}
+#assist-panel output{flex:0 0 38px;text-align:right;font-size:12px;color:var(--k-title)}
+#assist-panel .st{margin-top:8px;padding-top:6px;border-top:1px solid var(--k-line);font-size:12px;color:var(--k-faint);white-space:pre-line}
+`;
+  document.head.appendChild(css);
+
+  const MODE_TXT = { complet: 'Jouer complet', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
+  const MODE_SEG = { complet: 'Complet', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
+  const HINT = {
+    complet: 'Le bot joue seul, les aides sont en veille.', metiers: 'Le bot récolte seul, les aides sont en veille.',
+    assist: 'Aides au jeu manuel. Changer une option passe en Perso.', simple: 'Aimbot et ramassage seulement.', perso: 'Toutes les options, à la carte.',
+  };
+  const MC = { complet: 'c', metiers: 'm', assist: 'a', simple: 's', perso: 'p' }; // row visibility letters
+  // Sections: [id, title, rows]. Row: [key, label, modes, parent key, range [min, max, step, unit]].
+  const SECS = [
+    ['visee', 'Visée', [['aim', 'Aimbot', 'asp'], ['radius', 'Rayon', 'asp', 'aim', [1, 20, 0.5, ' m']],
+      ['aimAll', 'Aussi clic droit et sorts', 'ap', 'aim'], ['lead', 'Anticipation', 'ap'], ['mark', 'Marqueur', 'ap', 'aim']]],
+    ['survie', 'Survie', [['dodge', 'Esquive auto', 'ap'], ['pot', 'Potion auto', 'ap'], ['potPct', 'Seuil', 'ap', 'pot', [5, 90, 5, ' %']]]],
+    ['butin', 'Butin', [['loot', 'Ramassage auto', 'asp'], ['lootR', 'Rayon', 'asp', 'loot', [1, 10, 0.5, ' m']],
+      ['lootGear', 'Aussi l\'équipement', 'ap', 'loot'], ['lootWalk', 'Détour si zone sûre (6 m)', 'ap', 'loot']]],
+    ['combat', 'Combat', [['auto', 'Sorts auto', 'p']]],
+    ['infos', 'Infos', [['dash', 'Tableau de bord', 'ap']]],
+    ['bots', 'Bots', [['autoTalents', 'Talents auto', 'cp']]],
+  ];
+  const CHEV = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const fmtV = (v, u) => `${+v}${u}`;
+  const rowHtml = ([k, label, m, par, rg]) => {
+    const a = `class="r${par ? ' sub' : ''}" data-row="${k}" data-m="${m}"${par ? ` data-par="${par}"` : ''}`;
+    return rg ? `<label ${a}><span class="lb">${label}</span><input type="range" data-k="${k}" min="${rg[0]}" max="${rg[1]}" step="${rg[2]}" aria-label="${label}"><output data-u="${rg[3]}"></output></label>`
+      : `<label ${a}><span class="lb">${label}</span><input type="checkbox" class="sw" role="switch" data-k="${k}"></label>`;
+  };
+
   const panel = document.createElement('div');
   panel.id = 'assist-panel';
-  panel.style.cssText = 'position:fixed;z-index:99999;width:260px;padding:8px 10px;user-select:none;'
-    + 'background:rgba(12,14,16,.82);color:#e6e2d6;font:12px/1.6 ui-monospace,Menlo,monospace;'
-    + 'border:1px solid rgba(230,226,214,.25);border-radius:6px';
-  const place = () => {
-    if (opt.x == null) { panel.style.top = '12px'; panel.style.right = '300px'; panel.style.left = 'auto'; return; }
-    panel.style.left = Math.max(0, Math.min(innerWidth - 60, opt.x)) + 'px'; panel.style.top = Math.max(0, Math.min(innerHeight - 30, opt.y)) + 'px'; panel.style.right = 'auto';
-  };
-  const row = (k, label, sub) => `<label style="display:block;cursor:pointer${sub ? ';padding-left:20px' : ''}"><input type="checkbox" data-k="${k}"${opt[k] ? ' checked' : ''}> ${label}</label>`;
-  const num = (k, label, min, max, step) => `<label style="display:block;padding-left:20px">${label} <input type="number" data-k="${k}" value="${opt[k]}" min="${min}" max="${max}" step="${step}" style="width:48px;background:#1b1e21;color:#e6e2d6;border:1px solid #444;border-radius:3px"></label>`;
-  panel.innerHTML = `<div data-drag style="cursor:move;color:#d9b26f;font-weight:bold;margin-bottom:4px">ASSIST <span style="color:#8fb3a8;font-weight:normal">(F6)</span></div>`
-    + row('aim', 'Aimbot') + num('radius', 'rayon (m)', 1, 20, 0.5) + row('aimAll', 'Aussi clic droit et sorts')
-    + row('lead', 'Anticipation') + row('mark', 'Marqueur')
-    + row('pot', 'Potion auto') + num('potPct', 'seuil (%)', 5, 90, 5)
-    + row('dodge', 'Esquive auto')
-    + row('loot', 'Ramassage auto') + num('lootR', 'rayon (m)', 1, 10, 0.5) + row('lootGear', 'Aussi l\'équipement', 1)
-    + row('lootWalk', 'Détour si zone sûre (6 m)', 1)
-    + row('dash', 'Tableau de bord')
-    + row('auto', 'Sorts auto') + `<div data-slots></div>`
-    + `<label style="display:block;cursor:pointer"><input type="checkbox" data-bot> Bot complet</label>`
-    + `<div data-st style="color:#8fb3a8;margin-top:4px;white-space:pre"></div>`;
+  panel.className = 'menu';
+  panel.setAttribute('role', 'region');
+  panel.setAttribute('aria-label', 'Assistance');
+  panel.innerHTML = `<div class="hd" data-drag><span class="dot" data-dot></span><span class="ttl">Assist</span><span class="key">F6</span>`
+    + `<span class="pt" data-pt></span><span class="sp"></span><button class="ic" data-min>${CHEV.replace('M2 3.5l3 3 3-3', 'M2 6.5l3-3 3 3')}</button></div>`
+    + `<div class="bd"><div class="seg" role="radiogroup" aria-label="Mode">`
+    + MODES.map(m => `<button role="radio" data-mode="${m}"${m === 'perso' ? ' class="pp"' : ''} title="${MODE_TXT[m]}">${MODE_SEG[m]}</button>`).join('')
+    + `</div><div class="hint" data-hint></div>`
+    + `<div class="act" data-act><span class="dot" data-adot></span><span class="tx" data-atx></span><button class="run" data-run></button></div>`
+    + SECS.map(([id, title, rows]) => `<section data-sec="${id}"><button class="sh" data-sh aria-expanded="true">${CHEV}${title}<span class="n" data-n></span></button>`
+      + `<div class="sb">${rows.map(rowHtml).join('')}${id === 'combat' ? '<div data-slots></div>' : ''}</div></section>`).join('')
+    + `<div class="st" data-st></div></div>`;
   document.body.appendChild(panel);
-  place();
-  panel.addEventListener('change', e => {
+  const $ = s => panel.querySelector(s), $$ = s => [...panel.querySelectorAll(s)];
+  const stEl = $('[data-st]'), slotsEl = $('[data-slots]');
+  const esc = s => String(s).replace(/[<>&"]/g, c => `&#${c.charCodeAt(0)};`);
+
+  const place = () => {
+    const w = panel.offsetWidth || 276, h = panel.offsetHeight || 40;
+    if (S.ui.x == null) { panel.style.left = Math.max(0, innerWidth - 300 - w) + 'px'; panel.style.top = '12px'; return; }
+    panel.style.left = Math.max(0, Math.min(innerWidth - w, S.ui.x)) + 'px'; panel.style.top = Math.max(0, Math.min(innerHeight - Math.min(h, 40), S.ui.y)) + 'px';
+  };
+
+  // --- state actions
+  const botOk = () => ['necromancer', 'shaman'].includes(g.char?.ch?.cls) && !!window.__bot;
+  const refresh = () => { st.botAt = 0; anyBot(); };
+  const pauseBots = () => {
+    refresh();
+    try { if (st.botOn) window.__bot.pause(); } catch {}
+    try { if (st.gatherOn) window.__gather.pause(); } catch {}
+    refresh();
+  };
+  // Start one bot, pause the other (__gather.start already pauses __bot itself).
+  const runBot = which => {
+    refresh();
+    try {
+      if (which === 'complet') { if (st.gatherOn) window.__gather.pause(); window.__bot.start(); }
+      else window.__gather.start();
+    } catch (e) { st.err = e.message; }
+    refresh();
+  };
+  function setMode(m) {
+    if (m === S.mode && m !== 'perso') return;
+    if (m === 'complet' || m === 'metiers') { runBot(m); S.ui.min = true; }
+    else {
+      pauseBots();
+      Object.assign(opt, m === 'perso' ? feats(S.custom) : PRESET[m]);
+    }
+    S.mode = m; save(); draw(); place();
+  }
+  // Any individual feature change turns the mode into Perso and becomes its snapshot.
+  const touched = () => {
+    if (S.mode === 'complet' || S.mode === 'metiers') pauseBots();
+    S.mode = 'perso'; S.custom = feats(opt); save();
+  };
+
+  // --- rendering
+  function draw() {
+    const mc = MC[S.mode];
+    panel.classList.toggle('min', !!S.ui.min);
+    const minBtn = $('[data-min]');
+    minBtn.title = S.ui.min ? 'Agrandir' : 'Réduire'; minBtn.setAttribute('aria-label', minBtn.title); minBtn.setAttribute('aria-expanded', String(!S.ui.min));
+    for (const b of $$('[data-mode]')) {
+      const m = b.dataset.mode;
+      b.setAttribute('aria-checked', String(m === S.mode)); b.tabIndex = m === S.mode ? 0 : -1;
+      b.disabled = m === 'complet' ? !botOk() : m === 'metiers' ? !window.__gather : false;
+      b.title = m === 'complet' && !botOk() ? 'Jouer complet : nécromancien ou chaman, bot chargé'
+        : m === 'metiers' && !window.__gather ? 'Métiers : bot métiers non chargé' : MODE_TXT[m];
+    }
+    $('[data-hint]').textContent = HINT[S.mode];
+    for (const r of $$('[data-row]')) {
+      const k = r.dataset.row, el = r.querySelector('input');
+      r.hidden = !r.dataset.m.includes(mc);
+      r.classList.toggle('off', !!r.dataset.par && !opt[r.dataset.par]);
+      if (k === 'autoTalents') el.checked = S.bot.autoTalents;
+      else if (el.type === 'checkbox') el.checked = !!opt[k];
+      else { el.value = opt[k]; r.querySelector('output').textContent = fmtV(opt[k], r.querySelector('output').dataset.u); }
+    }
+    slotsEl.hidden = mc !== 'p';
+    for (const el of slotsEl.querySelectorAll('[data-slot]')) el.checked = !!opt.autoSlots[+el.dataset.slot];
+    slotsEl.classList.toggle('off', !opt.auto);
+    for (const s of $$('section')) {
+      const rows = [...s.querySelectorAll('[data-row]')], vis = rows.filter(r => !r.hidden);
+      s.hidden = !vis.length;
+      const sw = vis.filter(r => !r.dataset.par && r.querySelector('.sw'));
+      s.querySelector('[data-n]').textContent = sw.length > 1 ? `${sw.filter(r => r.querySelector('input').checked).length}/${sw.length}` : '';
+      const sh = s.querySelector('[data-sh]');
+      sh.setAttribute('aria-expanded', String(!S.ui.sec[s.dataset.sec]));
+    }
+    drawLive();
+  }
+  // Bot line, pill text and status dot: refreshed by the timer.
+  const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+  const short = (v, n = 32) => { const s = typeof v === 'string' ? v : v == null ? '' : JSON.stringify(v); return s.length > n ? s.slice(0, n - 1) + '.' : s; };
+  function gatherTxt() {
+    const s = st.gatherS;
+    if (!s) return 'bot métiers non chargé';
+    const top = Object.entries(s.stats ?? {}).sort((a, b) => b[1].n - a[1].n)[0];
+    const rate = top ? `${top[0]} ${String(s.rate?.[top[0]] ?? '').split(',')[0]}` : '';
+    return [s.node?.node ?? short(s.doing, 24), rate].filter(Boolean).join(', ') || 'en route';
+  }
+  function botTxt() {
+    const s = st.botS;
+    if (!s) return 'bot non chargé';
+    return `${short(s.doing, 28) || 'prêt'}, niv ${s.lvl}, ${plural(s.deaths ?? 0, 'mort')}`;
+  }
+  function drawLive() {
+    const bm = S.mode === 'complet' || S.mode === 'metiers', on = S.mode === 'complet' ? st.botOn : st.gatherOn;
+    let pill, dot;
+    if (st.gatherOn) { pill = `<b>Métiers</b> : ${esc(gatherTxt())}`; dot = 'on'; }
+    else if (st.botOn) { pill = `<b>Complet</b> : ${esc(botTxt())}`; dot = 'on'; }
+    else if (bm) { pill = `<b>${MODE_TXT[S.mode]}</b> : en pause`; dot = ''; }
+    else { pill = `<b>${MODE_TXT[S.mode]}</b> actif`; dot = 'as'; }
+    const pt = $('[data-pt]');
+    if (pt.innerHTML !== pill) { pt.innerHTML = pill; pt.title = pt.textContent; }
+    $('[data-dot]').className = 'dot ' + dot;
+    const act = $('[data-act]');
+    act.hidden = !bm;
+    if (bm) {
+      $('[data-adot]').className = 'dot ' + (on ? 'on' : '');
+      $('[data-atx]').textContent = on ? (S.mode === 'complet' ? botTxt() : gatherTxt()) : 'en pause';
+      $('[data-atx]').title = $('[data-atx]').textContent;
+      $('[data-run]').textContent = on ? 'Pause' : 'Reprendre';
+    }
+  }
+  // --- events
+  panel.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.disabled) return;
+    if (b.dataset.mode) setMode(b.dataset.mode);
+    else if (b.dataset.min !== undefined) { S.ui.min = !S.ui.min; save(); draw(); place(); }
+    else if (b.dataset.sh !== undefined) { const id = b.closest('section').dataset.sec; S.ui.sec[id] = !S.ui.sec[id]; save(); draw(); }
+    else if (b.dataset.run !== undefined) { (S.mode === 'complet' ? st.botOn : st.gatherOn) ? pauseBots() : runBot(S.mode); drawLive(); }
+  });
+  // Arrow keys move between mode segments (radio group pattern).
+  $('.seg').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const bs = $$('[data-mode]').filter(b => !b.disabled), i = bs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+    n.focus(); n.click(); e.preventDefault();
+  });
+  const onInput = e => {
     const el = e.target;
-    if (el.dataset.bot !== undefined) { try { el.checked ? window.__bot.start() : window.__bot.pause(); } catch {} st.botAt = 0; return; }
-    if (el.dataset.slot !== undefined) { opt.autoSlots[+el.dataset.slot] = el.checked; save(); return; }
+    if (el.dataset.slot !== undefined) { opt.autoSlots[+el.dataset.slot] = el.checked; touched(); draw(); return; }
     const k = el.dataset.k;
     if (!k) return;
+    if (k === 'autoTalents') { S.bot.autoTalents = el.checked; pushBotOpts(); save(); return; }
     if (el.type === 'checkbox') opt[k] = el.checked;
-    else { const v = parseFloat(el.value); if (Number.isFinite(v)) opt[k] = Math.max(+el.min, Math.min(+el.max, v)); el.value = opt[k]; }
-    save();
-  });
-  // Keys typed in the number inputs must not reach the game.
-  panel.addEventListener('keydown', e => e.stopPropagation());
+    else { const v = parseFloat(el.value); if (!Number.isFinite(v)) return; opt[k] = Math.max(+el.min, Math.min(+el.max, v)); }
+    touched(); draw();
+  };
+  panel.addEventListener('change', onInput);
+  panel.addEventListener('input', e => { if (e.target.type === 'range') onInput(e); });
+  // Keys and clicks on the panel never reach the game.
+  for (const t of ['keydown', 'keyup', 'mousedown', 'pointerdown', 'wheel', 'contextmenu', 'dblclick']) panel.addEventListener(t, e => e.stopPropagation());
+  // Mouse users get focus back to the game (WASD would stop at a focused switch); keyboard focus stays.
+  panel.addEventListener('pointerup', () => setTimeout(() => { if (panel.contains(document.activeElement)) document.activeElement.blur(); }));
   panel.addEventListener('mouseenter', () => { st.overPanel = true; });
   panel.addEventListener('mouseleave', () => { st.overPanel = false; });
   let drag = null;
   panel.addEventListener('mousedown', e => {
-    if (!e.target.closest('[data-drag]')) return;
-    const r = panel.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; e.preventDefault();
+    if (e.button !== 0 || !e.target.closest('[data-drag]') || e.target.closest('button')) return;
+    const r = panel.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, moved: false }; e.preventDefault();
   });
-  const onMove = e => { if (!drag) return; opt.x = e.clientX - drag.dx; opt.y = e.clientY - drag.dy; place(); };
-  const onUp = () => { if (drag) { drag = null; save(); } };
+  const onMove = e => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 4) return;
+    drag.moved = true; S.ui.x = e.clientX - drag.dx; S.ui.y = e.clientY - drag.dy; place();
+  };
+  // A click (no drag) on the pill expands it.
+  const onUp = () => {
+    if (!drag) return;
+    const moved = drag.moved; drag = null;
+    if (!moved && S.ui.min) { S.ui.min = false; draw(); place(); }
+    save();
+  };
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
 
   // Auto cast slot list, rebuilt when the bar (or a form) changes the names.
   const KEY_TXT = ['clic G', 'clic D', '1', '2', '3', '4', 'R', '5'];
-  const slotsEl = panel.querySelector('[data-slots]');
   let slotsSig = '';
   function drawSlots() {
     const names = g.char.bar.map((id, i) => id ? slotName(i) : ''), sig = names.join('|');
     if (sig === slotsSig) return;
     slotsSig = sig;
-    slotsEl.innerHTML = names.map((n, i) => n ? `<label style="display:block;cursor:pointer;padding-left:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">`
-      + `<input type="checkbox" data-slot="${i}"${opt.autoSlots[i] ? ' checked' : ''}> ${KEY_TXT[i]} : ${n.replace(/[<>&]/g, '')}</label>` : '').join('');
+    slotsEl.innerHTML = names.map((n, i) => n ? `<label class="r sub" title="${esc(n)}"><span class="lb"><i>${KEY_TXT[i]}</i>${esc(n)}</span>`
+      + `<input type="checkbox" class="sw" role="switch" data-slot="${i}"${opt.autoSlots[i] ? ' checked' : ''}></label>` : '').join('');
   }
 
   // --- dashboard overlay (Tableau de bord)
@@ -429,19 +690,18 @@
       + `tués : ${s.kills}   morts : ${s.deaths}\nsession : ${hms(s.dur)}`;
   }
 
-  const botBox = panel.querySelector('[data-bot]'), stEl = panel.querySelector('[data-st]');
   let uiN = 0;
   const uiTimer = setInterval(() => {
     if (uiN++ % 4 === 0) drawDash();
     if (panel.hidden) return;
-    drawSlots();
-    const ok = ['necromancer', 'shaman'].includes(g.char?.ch?.cls) && !!window.__bot;
-    botBox.disabled = !ok; botBox.parentElement.style.opacity = ok ? 1 : 0.45;
-    botBox.checked = ok && botOn();
+    anyBot();
+    drawSlots(); drawLive();
+    const sig = `${botOk()}|${!!window.__gather}`;
+    if (sig !== st.uiSig) { st.uiSig = sig; draw(); } // a bot loaded or unloaded: segment availability
     const m = st.tgt;
-    stEl.textContent = botOn() ? 'bot actif : aimbot en veille'
+    stEl.textContent = st.botOn || st.gatherOn ? `${st.botOn ? 'jouer complet' : 'bot métiers'} actif : aides en veille`
       : `cible : ${alive(m) ? `${m.def?.kind ?? '?'} ${m.level ?? ''}${st.fallback ? ' (proche)' : ''}` : '-'}`
-        + (opt.dodge || opt.loot || opt.auto ? `\nesquives ${st.dodges}  ramassés ${st.loots}  sorts ${st.casts}` : '')
+        + (opt.dodge || opt.loot || opt.auto ? `\nesquives ${st.dodges}, ramassés ${st.loots}, sorts ${st.casts}` : '')
         + (st.escaping && opt.dodge ? '\nesquive en cours' : '')
         + (st.err ? `\nerreur : ${st.err}` : '');
   }, 250);
@@ -449,10 +709,12 @@
   const onKey = e => {
     if (e.code !== 'F6' || g.ui.typing) return;
     e.preventDefault(); panel.hidden = !panel.hidden;
+    if (!panel.hidden) place();
   };
   window.addEventListener('keydown', onKey, true);
   const onResize = () => place();
   window.addEventListener('resize', onResize);
+  draw(); place();
 
   // Self-check of the lead math.
   (() => {
@@ -480,10 +742,14 @@
     if (!l || Math.abs(l[0]) !== 1 || l[1] !== 0) fail('line side step');
     teles.length = n0;
     if (lootable({ kind: 'carcass' }) || !lootable({ kind: 'gold' })) fail('loot kinds');
+    // v1 flat settings: values and position kept, mode guessed from the switches.
+    const m1 = parseState({ aim: true, aimAll: true, lead: true, mark: true, dodge: true, loot: true, lootR: 7, x: 40, y: 50, autoSlots: [true] });
+    if (m1.mode !== 'perso' || m1.f.lootR !== 7 || !m1.f.autoSlots[0] || m1.ui.x !== 40 || 'x' in m1.f || m1.bot.autoTalents) fail('migrate v1');
+    if (parseState({ ...PRESET.simple }).mode !== 'simple' || parseState(null).mode !== 'perso') fail('migrate mode');
   })();
 
   window.__assist = {
-    opt, st, vel, teles, dash, // read-only debug
+    opt, S, st, vel, teles, dash, draw, // read-only debug (S: saved state, draw: panel redraw)
     dodgeDecide, lootable, lootTick, autoDecide, slotReady, castRange, dashStats, // decision functions, for live checks
     stop() {
       alive_ = false;
@@ -492,7 +758,7 @@
       window.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', onResize);
       window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp);
       if (g.onMessage === onMsg) g.onMessage = origOnMessage; // else a pass-through (alive_ false)
-      cv.remove(); panel.remove(); dashEl.remove();
+      cv.remove(); panel.remove(); css.remove(); dashEl.remove();
       delete window.__assist;
     },
   };
