@@ -10,8 +10,8 @@
   const DEF = { aim: true, aimAll: false, lead: true, mark: true, pot: false, potPct: 35, radius: 6,
     dodge: false, loot: false, lootR: 4, lootGear: false, lootWalk: false, dash: true,
     auto: false, autoSlots: [false, false, false, false, false, false, false, false] };
-  // Modes: complet (full bot), metiers (gathering bot), assist, simple (presets on the main switches), perso (the user's own snapshot).
-  const MODES = ['complet', 'metiers', 'assist', 'simple', 'perso'];
+  // Modes: complet (full bot), groupe (full bot following the party, __botOpts.group), metiers (gathering bot), assist, simple (presets on the main switches), perso (the user's own snapshot).
+  const MODES = ['complet', 'groupe', 'metiers', 'assist', 'simple', 'perso'];
   const FLAGS = ['aim', 'aimAll', 'lead', 'mark', 'dodge', 'pot', 'loot', 'dash', 'auto'];
   const PRESET = {
     assist: { aim: true, aimAll: true, lead: true, mark: true, dodge: true, pot: true, loot: true, dash: true, auto: false },
@@ -37,7 +37,7 @@
   const opt = S.f; // feature logic reads opt.* only
   const save = () => { try { localStorage.setItem(OPT_KEY, JSON.stringify(S)); } catch {} };
   // Read by bot.page.js before learning talents.
-  const pushBotOpts = () => { window.__botOpts = { ...(window.__botOpts || {}), autoTalents: S.bot.autoTalents }; };
+  const pushBotOpts = () => { window.__botOpts = { ...(window.__botOpts || {}), autoTalents: S.bot.autoTalents, group: S.mode === 'groupe' }; };
   pushBotOpts();
   // A* overlay (viz.page.js): bit 1 on-screen path, bit 2 big map; viz reads the bot's nav, so it shows in Complet.
   const pushViz = () => window.__viz?.setMode?.((S.bot.vizPath ? 1 : 0) | (S.bot.vizMap ? 2 : 0));
@@ -195,7 +195,8 @@
   // --- loot: pickup message (as the bot) for drops within lootR; optional walk-over when idle and safe.
   const AUTO_LOOT = new Set(['gold', 'mat', 'globe', 'potion', 'scroll']);
   const bagFull = () => g.char.bag.filter(Boolean).length >= g.char.bag.length;
-  const lootable = d => AUTO_LOOT.has(d.kind) || (d.kind === 'item' && opt.lootGear && !bagFull());
+  // A globe only restores hp: worth a pickup (or a detour) only below full life.
+  const lootable = d => d.kind === 'globe' ? g.hp < g.life : AUTO_LOOT.has(d.kind) || (d.kind === 'item' && opt.lootGear && !bagFull());
   const lootTry = new Map(); // drop id -> { n, at }
   // Sends pickups (2 tries per drop, 1.5 s apart) and returns the nearest lootable drop in radius, or null.
   function lootTick(me) {
@@ -421,7 +422,7 @@ box-shadow:0 0 0 1px #000,0 12px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,
 #assist-panel .seg button:hover:not(:disabled){color:var(--k-ink);background:rgba(242,237,226,.06)}
 #assist-panel .seg button[aria-checked=true]{color:#1a1608;background:linear-gradient(180deg,#f0cd78,#c99a3a);font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 #assist-panel .seg button:disabled{opacity:.35;cursor:not-allowed}
-#assist-panel .seg .pp{flex:0 0 auto;padding:5px 6px}
+#assist-panel .seg .pp{flex:0 0 auto;padding:5px 4px}
 #assist-panel .hint{margin:7px 1px 2px;font-size:12px;color:var(--k-faint)}
 #assist-panel .act{display:flex;align-items:center;gap:8px;margin-top:8px;padding:7px 9px;border-radius:6px;background:rgba(0,0,0,.25);border:1px solid var(--k-line)}
 #assist-panel .act .tx{flex:1;min-width:0;color:var(--k-dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -453,13 +454,13 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
 `;
   document.head.appendChild(css);
 
-  const MODE_TXT = { complet: 'Jouer complet', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
-  const MODE_SEG = { complet: 'Complet', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
+  const MODE_TXT = { complet: 'Jouer complet', groupe: 'Groupe', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
+  const MODE_SEG = { complet: 'Complet', groupe: 'Groupe', metiers: 'Métiers', assist: 'Assistant', simple: 'Simple', perso: 'Perso' };
   const HINT = {
-    complet: 'Le bot joue seul, les aides sont en veille.', metiers: 'Le bot récolte seul, les aides sont en veille.',
+    complet: 'Le bot joue seul, les aides sont en veille.', groupe: 'Le bot suit le membre du groupe de niveau le plus proche et l\'aide.', metiers: 'Le bot récolte seul, les aides sont en veille.',
     assist: 'Aides au jeu manuel. Changer une option passe en Perso.', simple: 'Aimbot et ramassage seulement.', perso: 'Toutes les options, à la carte.',
   };
-  const MC = { complet: 'c', metiers: 'm', assist: 'a', simple: 's', perso: 'p' }; // row visibility letters
+  const MC = { complet: 'c', groupe: 'g', metiers: 'm', assist: 'a', simple: 's', perso: 'p' }; // row visibility letters
   // Sections: [id, title, rows]. Row: [key, label, modes, parent key, range [min, max, step, unit]].
   const SECS = [
     ['visee', 'Visée', [['aim', 'Aimbot', 'asp'], ['radius', 'Rayon', 'asp', 'aim', [1, 20, 0.5, ' m']],
@@ -468,8 +469,8 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     ['butin', 'Butin', [['loot', 'Ramassage auto', 'asp'], ['lootR', 'Rayon', 'asp', 'loot', [1, 10, 0.5, ' m']],
       ['lootGear', 'Aussi l\'équipement', 'ap', 'loot'], ['lootWalk', 'Détour si zone sûre (6 m)', 'ap', 'loot']]],
     ['combat', 'Combat', [['auto', 'Sorts auto', 'p']]],
-    ['infos', 'Infos', [['dash', 'Tableau de bord', 'ap'], ['vizPath', 'Chemin A* à l\'écran', 'cmasp'], ['vizMap', 'Grande carte (A*)', 'cmasp']]],
-    ['bots', 'Bots', [['autoTalents', 'Talents auto', 'cp']]],
+    ['infos', 'Infos', [['dash', 'Tableau de bord', 'ap'], ['vizPath', 'Chemin A* à l\'écran', 'cgmasp'], ['vizMap', 'Grande carte (A*)', 'cgmasp']]],
+    ['bots', 'Bots', [['autoTalents', 'Talents auto', 'cgp']]],
   ];
   const CHEV = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const fmtV = (v, u) => `${+v}${u}`;
@@ -517,24 +518,26 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
   const runBot = which => {
     refresh();
     try {
-      if (which === 'complet') { if (st.gatherOn) window.__gather.pause(); window.__bot.start(); }
+      if (which !== 'metiers') { if (st.gatherOn) window.__gather.pause(); window.__bot.start(); }
       else window.__gather.start();
     } catch (e) { st.err = e.message; }
     refresh();
   };
   function setMode(m) {
     if (m === S.mode && m !== 'perso') return;
-    if (m === 'complet' || m === 'metiers') { runBot(m); S.ui.min = true; }
+    S.mode = m; pushBotOpts(); // the bot reads group on its next tick
+    if (m === 'complet' || m === 'groupe' || m === 'metiers') { runBot(m); S.ui.min = true; }
     else {
       pauseBots();
       Object.assign(opt, m === 'perso' ? feats(S.custom) : PRESET[m]);
     }
-    S.mode = m; save(); draw(); place();
+    save(); draw(); place();
   }
+  const botMode = () => S.mode === 'complet' || S.mode === 'groupe' || S.mode === 'metiers';
   // Any individual feature change turns the mode into Perso and becomes its snapshot.
   const touched = () => {
-    if (S.mode === 'complet' || S.mode === 'metiers') pauseBots();
-    S.mode = 'perso'; S.custom = feats(opt); save();
+    if (botMode()) pauseBots();
+    S.mode = 'perso'; pushBotOpts(); S.custom = feats(opt); save();
   };
 
   // --- rendering
@@ -546,8 +549,8 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     for (const b of $$('[data-mode]')) {
       const m = b.dataset.mode;
       b.setAttribute('aria-checked', String(m === S.mode)); b.tabIndex = m === S.mode ? 0 : -1;
-      b.disabled = m === 'complet' ? !botOk() : m === 'metiers' ? !window.__gather : false;
-      b.title = m === 'complet' && !botOk() ? 'Jouer complet : nécromancien ou chaman, bot chargé'
+      b.disabled = m === 'complet' || m === 'groupe' ? !botOk() : m === 'metiers' ? !window.__gather : false;
+      b.title = (m === 'complet' || m === 'groupe') && !botOk() ? `${MODE_TXT[m]} : nécromancien ou chaman, bot chargé`
         : m === 'metiers' && !window.__gather ? 'Métiers : bot métiers non chargé' : MODE_TXT[m];
     }
     $('[data-hint]').textContent = HINT[S.mode];
@@ -587,10 +590,13 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     if (!s) return 'bot non chargé';
     return `${short(s.doing, 28) || 'prêt'}, niv ${s.lvl}, ${plural(s.deaths ?? 0, 'mort')}`;
   }
+  // Leader exposed by the bot as status().group = { name, lvl } (null without a party).
+  const groupTxt = () => { const l = st.botS?.group; return l ? `suit ${l.name} niv ${l.lvl}` : 'pas de groupe'; };
   function drawLive() {
-    const bm = S.mode === 'complet' || S.mode === 'metiers', on = S.mode === 'complet' ? st.botOn : st.gatherOn;
+    const bm = botMode(), on = S.mode === 'metiers' ? st.gatherOn : st.botOn;
     let pill, dot;
     if (st.gatherOn) { pill = `<b>Métiers</b> : ${esc(gatherTxt())}`; dot = 'on'; }
+    else if (st.botOn && S.mode === 'groupe') { pill = `<b>Groupe</b> : ${esc(groupTxt())}`; dot = 'on'; }
     else if (st.botOn) { pill = `<b>Complet</b> : ${esc(botTxt())}`; dot = 'on'; }
     else if (bm) { pill = `<b>${MODE_TXT[S.mode]}</b> : en pause`; dot = ''; }
     else { pill = `<b>${MODE_TXT[S.mode]}</b> actif`; dot = 'as'; }
@@ -601,7 +607,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     act.hidden = !bm;
     if (bm) {
       $('[data-adot]').className = 'dot ' + (on ? 'on' : '');
-      $('[data-atx]').textContent = on ? (S.mode === 'complet' ? botTxt() : gatherTxt()) : 'en pause';
+      $('[data-atx]').textContent = on ? (S.mode === 'metiers' ? gatherTxt() : S.mode === 'groupe' ? `${groupTxt()}, ${botTxt()}` : botTxt()) : 'en pause';
       $('[data-atx]').title = $('[data-atx]').textContent;
       $('[data-run]').textContent = on ? 'Pause' : 'Reprendre';
     }
@@ -613,7 +619,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     if (b.dataset.mode) setMode(b.dataset.mode);
     else if (b.dataset.min !== undefined) { S.ui.min = !S.ui.min; save(); draw(); place(); }
     else if (b.dataset.sh !== undefined) { const id = b.closest('section').dataset.sec; S.ui.sec[id] = !S.ui.sec[id]; save(); draw(); }
-    else if (b.dataset.run !== undefined) { (S.mode === 'complet' ? st.botOn : st.gatherOn) ? pauseBots() : runBot(S.mode); drawLive(); }
+    else if (b.dataset.run !== undefined) { (S.mode === 'metiers' ? st.gatherOn : st.botOn) ? pauseBots() : runBot(S.mode); drawLive(); }
   });
   // Arrow keys move between mode segments (radio group pattern).
   $('.seg').addEventListener('keydown', e => {
@@ -703,7 +709,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     const sig = `${botOk()}|${!!window.__gather}`;
     if (sig !== st.uiSig) { st.uiSig = sig; draw(); } // a bot loaded or unloaded: segment availability
     const m = st.tgt;
-    stEl.textContent = st.botOn || st.gatherOn ? `${st.botOn ? 'jouer complet' : 'bot métiers'} actif : aides en veille`
+    stEl.textContent = st.botOn || st.gatherOn ? `${st.botOn ? (S.mode === 'groupe' ? 'groupe' : 'jouer complet') : 'bot métiers'} actif : aides en veille`
       : `cible : ${alive(m) ? `${m.def?.kind ?? '?'} ${m.level ?? ''}${st.fallback ? ' (proche)' : ''}` : '-'}`
         + (opt.dodge || opt.loot || opt.auto ? `\nesquives ${st.dodges}, ramassés ${st.loots}, sorts ${st.casts}` : '')
         + (st.escaping && opt.dodge ? '\nesquive en cours' : '')
@@ -745,7 +751,7 @@ background:rgba(0,0,0,.5);border:1px solid rgba(221,213,196,.25);transition:back
     const l = teleScan({ x: 0.5, z: 4 }, 0.5);
     if (!l || Math.abs(l[0]) !== 1 || l[1] !== 0) fail('line side step');
     teles.length = n0;
-    if (lootable({ kind: 'carcass' }) || !lootable({ kind: 'gold' })) fail('loot kinds');
+    if (lootable({ kind: 'carcass' }) || !lootable({ kind: 'gold' }) || lootable({ kind: 'globe' }) !== g.hp < g.life) fail('loot kinds');
     // v1 flat settings: values and position kept, mode guessed from the switches.
     const m1 = parseState({ aim: true, aimAll: true, lead: true, mark: true, dodge: true, loot: true, lootR: 7, x: 40, y: 50, autoSlots: [true] });
     if (m1.mode !== 'perso' || m1.f.lootR !== 7 || !m1.f.autoSlots[0] || m1.ui.x !== 40 || 'x' in m1.f || m1.bot.autoTalents) fail('migrate v1');
