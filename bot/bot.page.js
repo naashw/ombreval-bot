@@ -1411,6 +1411,11 @@
   // NPCs whose 'give'/'turn' marker led nowhere (profession markers, etc.): npc id -> retry timestamp.
   const QUEST_SKIP = new Map();
 
+  // World map bounds (collision half size, client ET(230)) and the open-world bosses (client table, live bundle L27525).
+  const inWorld = p => { const c = g.world?.collision, h = (c?.half ?? 230) - 2; return Math.abs(p.x - (c?.cx ?? 0)) <= h && Math.abs(p.z - (c?.cz ?? 0)) <= h; };
+  const WORLD_BOSSES = [{ name: 'Grukk le Broyeur', x: 0, z: -106 }, { name: 'Reine des Fanges', x: -174, z: 84 }, { name: 'Seigneur de Braise', x: 176, z: -42 },
+    { name: 'Malachar, le Roi-Liche', x: 5, z: -190 }, { name: 'La Mère-Moisie', x: -146, z: 168 }, { name: 'Hrimgar, le Jarl de Givre', x: 22, z: 198 },
+    { name: 'Vel’Khor, le Dévoreur d’aube', x: 176, z: 168 }];
   // Quest objective. Main story chain first (user rule: do it in order, it leads to the next zones): its HUD step when
   // actionable; then NPC markers (turn-ins, new quests), then the guided quest; a level-locked main step comes last.
   function questObjective(g, zones = []) {
@@ -1449,7 +1454,19 @@
     // that quest's target.
     const t = g.compass?.target; // {x, z, r}: zone for kill/collect, NPC, dungeon entrance...
     const base = { label: `${title} : ${text}`, ...(t ? { x: t.x, z: t.z, r: t.r } : {}) };
-    if (t) {
+    // A target outside the world map (dungeon instances live at x 1000+) is never a world point: a named world boss
+    // goes to its spawn, a dungeon boss/miniboss (by name, else by the instance box holding the point) becomes that
+    // dungeon's step, anything else loses its target.
+    if (t && !inWorld(t)) {
+      delete base.x; delete base.z; delete base.r;
+      const wb = WORLD_BOSSES.find(b => name.includes(b.name));
+      const doors = g.portals?.doors ?? [];
+      const dn = doors.find(o => [o.d.boss?.name, o.d.miniboss?.name].some(n => n && name.includes(n)))
+        ?? doors.find(o => o.d.origin && t.x >= o.d.origin.x && t.x <= o.d.origin.x + 160 && t.z >= o.d.origin.z && t.z <= o.d.origin.z + 160);
+      if (wb) Object.assign(base, { x: wb.x, z: wb.z, r: 10 });
+      else if (dn) return { type: 'dungeon', ...base, label: `${title} : Terminer : ${dn.d.name}` };
+    }
+    else if (t) {
       const zone = zones.find(z => Math.hypot(z.x - t.x, z.z - t.z) < Math.max(z.r, t.r));
       if (zone) base.minLevel = zone.lvl[0];
     }
@@ -2127,8 +2144,8 @@
       // The quest area narrows the home only when the arm holding it won the UCB (value, deaths included).
       const z = pickZone(), q = st.quest;
       st.zone = z.name; st.questArm = holdsQuest(z, q);
-      if (st.questArm && !z.dun) { st.home = { x: q.x, z: q.z }; LEASH = Math.max(15, q.r ?? 25); }
-      else { st.home = { x: z.x, z: z.z }; LEASH = z.r; }
+      if (st.questArm && !z.dun && inWorld(q)) { st.home = { x: q.x, z: q.z }; LEASH = Math.max(15, q.r ?? 25); }
+      else { st.home = inWorld(z) ? { x: z.x, z: z.z } : { x: me.x, z: me.z }; LEASH = z.r; } // never a home off the world map
     }
     else if (!st.home) st.home = { x: me.x, z: me.z };
     const mobs = monsters().map(m => ({ m, d: dist(m.pos, me) })).sort((a, b) => a.d - b.d);
