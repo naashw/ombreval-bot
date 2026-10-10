@@ -551,7 +551,7 @@
       const m = g.entities.monsters.get(ev.s)?.view;
       if (!m) return;
       const k = m.def?.kind;
-      win.inDmg[k] = (win.inDmg[k] ?? 0) + (ev.a ?? 0) / lvlScale(m.level);
+      win.inDmg[k] = (win.inDmg[k] ?? 0) + (ev.a ?? 0) / lvlScale(m.level) / corTaken(); // learned at 0 stacks
       if (st.fight) st.fight.dmgIn[k] = (st.fight.dmgIn[k] ?? 0) + (ev.a ?? 0);
       hitUs.set(ev.s, now());
       const sw = swings.get(ev.s), e = ad.reach[k], dh = dist(m.pos, g.sim);
@@ -573,7 +573,7 @@
       win.inDmg[k] = 0; win.inExp[k] = 0;
     }
     if (win.outExp >= 2) {
-      ad.dpsRatio = Math.max(0.05, ema(ad.dpsRatio, win.outDmg / win.outExp / Math.max(1, priorMyDps()), ad.dpsN++));
+      ad.dpsRatio = Math.max(0.05, ema(ad.dpsRatio, win.outDmg / corDealt() / win.outExp / Math.max(1, priorMyDps()), ad.dpsN++));
       win.outDmg = 0; win.outExp = 0;
     }
   }
@@ -699,7 +699,14 @@
     }
     return hit * (sk('bonebolt').dmgPct / 100 / castSec('bonebolt') + servantCount() * SKEL_DPS + (golemAlive() ? GOLEM_DPS : 0));
   }
-  const myDps = () => priorMyDps() * ad.dpsRatio;
+  // Corruption (g.cor, bundle L7 L101719): per stack +4 % dealt, +5 % taken; at 10 the shadow drains 1 % life/s;
+  // a light pylon (4.5 m) washes it off in 2 s. Learned models stay at 0 stacks; the live multipliers apply on top.
+  const COR = { max: 10, dealt: 0.04, taken: 0.05, rot: 0.01, pylonR: 4.5 };
+  const corDealt = () => 1 + COR.dealt * Math.min(COR.max, g.cor ?? 0), corTaken = () => 1 + COR.taken * Math.min(COR.max, g.cor ?? 0);
+  // Open-world light pylons of La Faille (bundle WT L44755, plus the two by Vel'Khor at 176,168 -9,+9 / +10,-7).
+  const WORLD_PYLONS = [{ x: 132, z: 138 }, { x: 146, z: 124 }, { x: 172, z: 136 }, { x: 150, z: 162 }, { x: 136, z: 176 },
+    { x: 186, z: 158 }, { x: 168, z: 184 }, { x: 167, z: 177 }, { x: 186, z: 161 }];
+  const myDps = () => priorMyDps() * ad.dpsRatio * corDealt();
   // Shaman: crows (3 m) and totem (8 m) hit every target, the claws line about half an extra one.
   const splashShare = () => REAPER ? 0.8 : SHAMAN ? (p => (p.crows + p.totem + 0.5 * p.claws) / (p.claws + p.crows + p.totem))(shParts())
     : (sk('bonebolt').splashPct ?? 0) / (sk('bonebolt').dmgPct || 1);
@@ -728,12 +735,12 @@
   function engage(f, me) {
     const ttk = f.hp / Math.max(1e-6, me.dps * (1 + me.splash * Math.max(0, f.n - 1)));
     const pots = Math.min(me.potions, 1 + Math.floor(ttk / me.potCd));
-    const ttd = (me.hp + pots * me.potHeal) / Math.max(1e-6, f.dps * (1 - me.soak));
+    const ttd = (me.hp + pots * me.potHeal) / Math.max(1e-6, f.dps * (me.taken ?? 1) * (1 - me.soak));
     return { ttk, ttd, ok: ttd > ttk * me.margin };
   }
   const meState = () => ({
     dps: myDps(), hp: g.hp, potHeal: (SV.potion.instantPct + SV.potion.hotPct) / 100 * g.life, potions: g.char.potions, potCd: SV.potion.cdSec, splash: splashShare(),
-    soak: SHAMAN ? shSoak() : REAPER ? rpSoak() : 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin,
+    soak: SHAMAN ? shSoak() : REAPER ? rpSoak() : 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin, taken: corTaken(),
   });
   // Single-linkage clusters (8 m) of all live visible monsters; a group with a non-target member is not pullable.
   function groupsOf(all, allowed) {
@@ -1541,6 +1548,23 @@
   const allowedDun = (o, list) => !g.dungeon || !((o.m.boss && o.m.flags & MF.sealed && sealsLeft().length)
     || (o.m.flags & MF.warded && list.some(x => x !== o && !(x.m.flags & MF.warded))));
   // Environment out of fights (DUNGEONS.md 3.3): warm up at a brazier when the cold bites, cleanse at a pylon when corrupted.
+  // Pylon to cleanse at, or null. Up to 9 stacks corruption is a trade (+36 % dealt, +45 % taken, both in the models);
+  // the 10th starts the drain, so we cleanse once at 9 (the game's max - 1), or from max - 3 when a pylon is within 15 m
+  // (on the way between packs). Called between packs only (farm branch, dungeon exploration): the current pack is
+  // finished first. Once there, we stand inside the 4.5 m light until the stacks are gone.
+  function cleanseNeed() {
+    const cor = g.cor ?? 0;
+    if (!cor) { st.cleansing = false; return null; }
+    const pyl = g.dungeon ? (g.dungeon.layout.placements ?? []).filter(p => p.name === 'pylon') : WORLD_PYLONS;
+    const p = pyl.reduce((b, x) => !b || dist(g.sim, x) < dist(g.sim, b) ? x : b, null);
+    if (!p || dist(g.sim, p) > 120) return null;
+    if (st.cleansing || cor >= COR.max - 1 || (cor >= COR.max - 3 && dist(g.sim, p) < 15)) {
+      if (!st.cleansing) { st.cleansing = true; st.cleanses = (st.cleanses ?? 0) + 1; jlog('purification', { cor, d: Math.round(dist(g.sim, p)) }); }
+      return p;
+    }
+    return null;
+  }
+  const cleanseMove = (p, key) => { st.last = `purifie la corruption (${g.cor}) au pylône`; return dist(g.sim, p) > COR.pylonR - 1 ? travelPath({ x: p.x, z: p.z }, key) : [0, 0]; };
   function dunEnv(r, L, t) {
     const near = name => (L.placements ?? []).filter(p => p.name === name).sort((a, b) => dist(g.sim, a) - dist(g.sim, b))[0];
     if (g.dungeon.def.rule === 'cold' && !g.warm && (g.sim.chill ?? 0) >= (r.warming ? 20 : 60)) {
@@ -1548,16 +1572,8 @@
       if (b) { st.last = `donjon : se réchauffe (froid ${Math.round(g.sim.chill)})`; return dist(g.sim, b) > 2.5 ? travel({ x: b.x, z: b.z }, 'dungeon') : [0, 0]; }
     } else if (g.warm && (g.sim.chill ?? 0) >= 20 && r.warming) { st.last = 'donjon : se réchauffe'; return [0, 0]; }
     else r.warming = false;
-    if (g.dungeon.def.rule === 'corruption' && ((g.cor ?? 0) >= 7 || t < (r.cleanseUntil ?? 0))) {
-      const p = near('pylon');
-      if (p) {
-        st.last = `donjon : se purifie (corruption ${g.cor ?? 0})`;
-        if (dist(g.sim, p) > 4) { r.cleanseUntil = 0; return travel({ x: p.x, z: p.z }, 'dungeon'); }
-        r.cleanseUntil ||= t + 2500;
-        return [0, 0];
-      }
-    }
-    return null;
+    const p = g.dungeon.def.rule === 'corruption' ? cleanseNeed() : null;
+    return p ? cleanseMove(p, 'dungeon') : null;
   }
   // Boss enrage (DUNGEONS.md 3.3): enraged, or 20 s before def.boss.enrageAfter after the pull, with the boss above 30 %:
   // leave rather than die (the run is a bail).
@@ -2067,6 +2083,9 @@
     const me = g.sim, hpPct = g.hp / g.life;
     // Left an instance (run over, bail or death): it stays open ad.exp.ms from now.
     if (ad.zLvl !== g.level) { if (ad.zLvl != null) learnFall(); ad.zLvl = g.level; }
+    // Seconds per corruption stack gained (status only).
+    if ((g.cor ?? 0) > (st.corPrev ?? 0) && st.corAt) { const v = (now() - st.corAt) / 1000; ad.corSec = ema(ad.corSec ?? v, v, ad.corN = (ad.corN ?? 0) + 1); }
+    if ((g.cor ?? 0) !== (st.corPrev ?? 0)) { st.corAt = now(); st.corPrev = g.cor ?? 0; }
     const dunId = g.dungeon?.def.id ?? null;
     if (st.dunIn && st.dunIn !== dunId) { ad.dunOpen = ad.dunOpen.filter(o => o.id !== st.dunIn && Date.now() - o.at < ad.exp.ms).concat({ id: st.dunIn, at: Date.now() }); saveAd(); }
     st.dunIn = dunId;
@@ -2109,7 +2128,7 @@
 
     // --- reflexes
     // Local cooldown guard: g.potionCd only updates after the server answers.
-    if (hpPct < potionAt() && !(g.potionCd > 0) && g.char.potions > 0 && tick - (st.potAt ?? -1e9) > SV.potion.cdSec * 1000) { st.potAt = tick; g.actions.usePotion(); }
+    if (hpPct < potionAt() && !(g.potionCd > 0) && g.char.potions > 0 && tick - (st.potAt ?? -1e9) > SV.potion.cdSec * 1000) { st.potAt = tick; g.actions.usePotion(); zs.gold = (zs.gold ?? 0) - potionPrice(); } // potions spent count in the arm's net value
     progress();
     lootInPassing(me);
     st.reflex = null;
@@ -2153,7 +2172,9 @@
     const anchor = st.anchor && now() - st.anchor.at < 1500 ? st.anchor : null;
     // Monsters met in the current fight stay targets while alive (a boss that stops swinging is not dropped half dead).
     const met = o => st.fight?.seen.has(o.m.id) || st.carrySeen?.has(o.m.id);
-    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || plan.ids.has(o.m.id) || met(o) || (g.dungeon && isSeal(o.m) && o.d < 25) || leadTgt(o.m) || onMate(o.m))
+    // About to hit the corruption drain (or on the way to cleanse): finish what is on us, start no new pull.
+    const corHold = !!g.cor && (st.cleansing || g.cor >= COR.max - 1);
+    const ranked = mobs.filter(o => anchor ? engagedOnUs(o) || o.d < 4 : engagedOnUs(o) || o.d < 6 || (plan.ids.has(o.m.id) && !corHold) || met(o) || (g.dungeon && isSeal(o.m) && o.d < 25) || leadTgt(o.m) || onMate(o.m))
       .filter((o, _, all) => allowedDun(o, all)).map(o => ({ ...o, s: smith(o, kite) * dunMul(o.m) })).sort((a, b) => b.s - a.s);
     st.top = ranked.slice(0, 3).map(o => `${o.m.def?.kind}${o.m.level} ${o.s.toFixed(2)}`);
     const tgtO = ranked[0];
@@ -2221,6 +2242,8 @@
         : SHAMAN ? d < 12 && (g.sim.form === 0 || g.sim.form === 3) && !/form$/.test(g.sim.action?.type ?? '') : d < 13)) slots.push(0);
     } else {
       // Farm: head for the nearest monster of the planned pull, otherwise wander across the zone.
+      const pyl = cleanseNeed();
+      if (pyl) return { move: cleanseMove(pyl, 'pylon'), aim: null, slots: [], roll: false };
       const lure = mobs.find(o => plan.ids.has(o.m.id))?.m;
       if (lure && dist(me, st.home) <= LEASH + 8) {
         st.last = 'va chercher des ennemis';
@@ -2456,6 +2479,7 @@
       zoneUcb: (st.zoneArms ?? []).map(a => `${a.z.name} L${a.a} ${Math.round(a.mean)} n${a.n.toFixed(1)}`), ladder: st.ladder ?? [], fall: +fall().toFixed(3),
       xph: Object.fromEntries(Object.entries(ad.zones).map(([k, v]) => { const b = v.lv?.[g.level]; return [k, b ? `${Math.round(b.xp / Math.max(b.ms, 60000) * 3600000)} xp/h, ${b.deaths} morts (niv ${g.level})` : '-']; })),
       group: grouped() && grp.leadId != null ? (l => l && { name: l.n, lvl: l.lvl })(g.party.find(p => p.id === grp.leadId)) : null,
+      corruption: { stacks: g.cor ?? 0, secPerStack: ad.corSec && +ad.corSec.toFixed(1), cleanses: st.cleanses ?? 0, cleansing: !!st.cleansing },
       expeditions: { open: openExp(), max: ad.exp.max, min: ad.exp.ms / 60000 },
       dungeon: st.dun ? { id: st.dun.id, phase: st.dun.phase, room: st.dun.room, deaths: st.dun.deaths, min: Math.round((now() - st.dun.at) / 60000) } : null,
       dangers: ad.spots.map(x => `${x.kind} ${Math.round((x.until - Date.now()) / 1000)}s r${Math.round(x.r)}`), avoid: ad.avoid,
