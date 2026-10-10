@@ -1,5 +1,5 @@
 // Injected into the Ombreval page. Manual-play assist (F6 panel): aimbot, lead, target marker, auto potion,
-// telegraph dodge, auto loot, dashboard, auto cast, and a switch for the necro bot.
+// telegraph dodge, auto loot, dashboard, auto cast, and a switch for the full bot (necromancer, shaman).
 // Wraps __game.controls.build and onMessage once; never alters play when its options are off.
 (() => {
   if (window.__assist) window.__assist.stop();
@@ -368,7 +368,7 @@
     + row('lootWalk', 'Détour si zone sûre (6 m)', 1)
     + row('dash', 'Tableau de bord')
     + row('auto', 'Sorts auto') + `<div data-slots></div>`
-    + `<label style="display:block;cursor:pointer"><input type="checkbox" data-bot> Bot complet (nécro)</label>`
+    + `<label style="display:block;cursor:pointer"><input type="checkbox" data-bot> Bot complet</label>`
     + `<div data-st style="color:#8fb3a8;margin-top:4px;white-space:pre"></div>`;
   document.body.appendChild(panel);
   place();
@@ -435,9 +435,9 @@
     if (uiN++ % 4 === 0) drawDash();
     if (panel.hidden) return;
     drawSlots();
-    const necro = g.char?.ch?.cls === 'necromancer' && !!window.__bot;
-    botBox.disabled = !necro; botBox.parentElement.style.opacity = necro ? 1 : 0.45;
-    botBox.checked = necro && botOn();
+    const ok = ['necromancer', 'shaman'].includes(g.char?.ch?.cls) && !!window.__bot;
+    botBox.disabled = !ok; botBox.parentElement.style.opacity = ok ? 1 : 0.45;
+    botBox.checked = ok && botOn();
     const m = st.tgt;
     stEl.textContent = botOn() ? 'bot actif : aimbot en veille'
       : `cible : ${alive(m) ? `${m.def?.kind ?? '?'} ${m.level ?? ''}${st.fallback ? ' (proche)' : ''}` : '-'}`

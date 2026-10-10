@@ -7,9 +7,12 @@
 
   const SLOT_KEYS = ['Mouse0', 'Mouse2', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyR', 'Digit5'];
   const KITE_MAX = 11;
+  // Supported classes: necromancer (default paths) and shaman (SHAMAN.md, per-class branches below).
+  const CLS = g.char.ch.cls, SHAMAN = CLS === 'shaman';
 
   // Adaptive memory (this browser only): zone stats, caution, learned models, A/B knobs.
-  const AD_KEY = 'ombreval-bot-adapt';
+  // Per class: the shaman's learned dps ratio, margin and strategy stats must not overwrite the necro's.
+  const AD_KEY = SHAMAN ? 'ombreval-bot-adapt-shaman' : 'ombreval-bot-adapt';
   const ad = (() => { try { return JSON.parse(localStorage.getItem(AD_KEY)) ?? {}; } catch { return {}; } })();
   ad.zones ??= {}; ad.caution ??= 0; ad.deaths ??= []; ad.calmSince ??= Date.now();
   ad.enemy ??= {}; ad.dpsRatio ??= 1; ad.dpsN ??= 0; ad.margin ??= 1.5; ad.pull ??= {}; ad.strat ??= {};
@@ -70,8 +73,16 @@
       colossus: { dmgPct: 960, radius: 6, range: 10, castSec: 0.9, cost: 0 },
       sacrifice: { dmgPct: 150, radius: 3, castSec: 0.45, cost: 0 },
       ossature: { castSec: 0.6, cost: 0 },
+      // Shaman (shaman_skills.json, level 12); casts of claws/crows scale with aps, see castSec.
+      spiritclaws: { dmgPct: 108, splashPct: 108, radius: 0.9, range: 12, castSec: 0.6, cost: 0 },
+      crows: { dmgPct: 144, splashPct: 144, radius: 3, range: 12, castSec: 0.58, cost: 0, duration: 3 },
+      wolfform: { castSec: 0.35, cost: 0 }, bearform: { castSec: 0.35, cost: 0, roarCd: 10 },
+      ancestortotem: { dmgPct: 900, radius: 8, range: 12, castSec: 0.6, cost: 0, duration: 12 },
+      boarcharge: { dmgPct: 400, radius: 1.2, range: 16, castSec: 0.55, cost: 0 },
+      mammoth: { dmgPct: 800, radius: 7, castSec: 0.9, cost: 0 },
+      primalcall: { dmgPct: 600, radius: 3, range: 14, castSec: 0.65, cost: 0 },
     },
-    essence: { valuePerPoint: 8.44, reserveRule: null },
+    essence: { valuePerPoint: 8.44, reserveRule: SHAMAN ? 20 : null },
     // Client potion tooltip (L93399): 35 % life at once, then 20 % over 3 s, 1.5 s cooldown.
     potion: { instantPct: 35, hotPct: 20, hotSec: 3, cdSec: 1.5 },
     gear: null,
@@ -93,6 +104,14 @@
     sacrdagger: { aps: 1.6, // Saignée rituelle (60° cone 2 m, heals per hit) / Lien de sang (3 s tether, half heals)
       bonebolt: { dmgPct: 248.3, splashPct: 248.3, radius: 2, range: 2, sec: 1 / 1.6 },
       blight: { dmgPct: 645, splashPct: 0, radius: 1, range: 10, sec: 0.4, corpse: false } },
+    // Shaman (bundle Vh.shaman): non-classic clicks are coef x 90 % (LMB) and coef x 20 % (RMB), no crow swarm.
+    totem: { aps: 1.2 },
+    antlerstaff: { aps: 1.2, // Vrille (missile 14 m) / Bosquet
+      spiritclaws: { dmgPct: 90.6, splashPct: 0, radius: 0.5, range: 14, sec: 1 / 1.2 },
+      crows: { dmgPct: 23, splashPct: 0, radius: 1, range: 12, sec: 0.5 } },
+    hatchet: { aps: 1.1, // Taille de pierre (arc 2.3 m) / Totem lance
+      spiritclaws: { dmgPct: 82.2, splashPct: 82.2, radius: 2.3, range: 2.3, sec: 1 / 1.1 },
+      crows: { dmgPct: 5.4, splashPct: 5.4, radius: 3, range: 12, sec: 0.5 } },
   };
   const sk = (id, base = g.char.eq?.weapon?.base) => ({ ...SV.skills[id], ...WPN[base]?.[id] });
   const PLAYER_SPEED = 5.28;
@@ -255,7 +274,8 @@
     return best;
   }
   function retreatCands(me) {
-    const out = [], army = myAllies(), h = st.home ?? me;
+    const out = [], army = SHAMAN ? [] : myAllies(), h = st.home ?? me;
+    if (SHAMAN && totemLeft() > 0) out.push(st.totemPos); // shaman: fall back on the totem (heal 1.5 %/s at 8 m)
     if (army.length) out.push({ x: army.reduce((a, v) => a + v.pos.x, 0) / army.length, z: army.reduce((a, v) => a + v.pos.z, 0) / army.length });
     for (let i = 0; i < 12; i++) {
       const a = i * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
@@ -383,10 +403,17 @@
     const power = S.power / (0.04 * lb + b.pow) * (0.04 * lb + a.pow), life = S.life / (lb + b.hp) * (lb + a.hp);
     // TODO(ceiling): execute assumed to boost ~35% of our damage (share landing under 35% hp); fit from fight data.
     const hit = power * (1 + v('crit') / 100 * v('critDmg') / 100) * (1 + 0.35 * v('execute') / 100);
-    const base = eq.weapon?.base, aps = WPN[base]?.aps ?? S.aps, bolt = sk('bonebolt', base);
-    const boltSec = bolt.sec ?? bolt.castSec * SV.assumptions.aps / aps;
-    const surplus = (4 / boltSec + 2) * (S.furyGen ?? 1.1) - 0.75;
-    const dps = hit * (bolt.dmgPct / boltSec + SV.essence.valuePerPoint * surplus + 165 / (1 - v('cdr') / 100)) / 100;
+    const base = eq.weapon?.base, aps = WPN[base]?.aps ?? S.aps, bolt = sk(SHAMAN ? 'spiritclaws' : 'bonebolt', base);
+    let dps;
+    if (SHAMAN) {
+      // gear.formula.dpsIndex: claws 75 % of casts (0.72/aps), crows 144 %/3 s (classic totem only), totem + boar 78 %/s.
+      const sec = bolt.sec ?? 0.72 / aps;
+      dps = hit * (0.75 * bolt.dmgPct / sec + (bolt.sec ? 0 : 48) + 78 / (1 - v('cdr') / 100)) / 100;
+    } else {
+      const boltSec = bolt.sec ?? bolt.castSec * SV.assumptions.aps / aps;
+      const surplus = (4 / boltSec + 2) * (S.furyGen ?? 1.1) - 0.75;
+      dps = hit * (bolt.dmgPct / boltSec + SV.essence.valuePerPoint * surplus + 165 / (1 - v('cdr') / 100)) / 100;
+    }
     // TODO(ceiling): leech counted as 5 s of healing at our dps; guard ignores enemy penetration.
     const ehp = life / (1 - v('guard') / 100) + v('leech') / 100 * dps * 5;
     return { hit, aps, dps, ehp };
@@ -397,15 +424,25 @@
   };
   // Cast time: weapon clicks use their own (sec); classic bonebolt/blight scale with attack speed (dur/aps); other spells
   // are fixed but shortened by haste (aN: dur/(1+haste/100)).
-  const castSec = id => (id === 'bonebolt' || id === 'blight')
+  // Shaman claws/crows: 0.72/p and 0.7/p, p = aps x 1.3 under the wolf howl (g.sim.over > 0).
+  const castSec = id => SHAMAN && (id === 'spiritclaws' || id === 'crows')
+    ? sk(id).sec ?? (id === 'crows' ? 0.7 : 0.72) / (curSheet().aps * (g.sim.over > 0 ? 1.3 : 1))
+    : (id === 'bonebolt' || id === 'blight')
     ? sk(id).sec ?? (sk(id).castSec ?? 0.58) * SV.assumptions.aps / curSheet().aps : (sk(id).castSec ?? 0.6) / (1 + (g.stats?.haste ?? 0) / 100);
   const SKEL_DPS = 0.231, GOLEM_DPS = 0.45; // weapon hits per second (30% every 1.3 s, 90% every 2 s)
+  // Shaman hit units per second per target: claws (75 % of casts), the crow swarm (classic weapon only), the totem while up.
+  const shParts = () => ({ claws: 0.75 * sk('spiritclaws').dmgPct / 100 / castSec('spiritclaws'),
+    crows: sk('crows').sec ? 0 : sk('crows').dmgPct / 100 / (crowsDur() / 1000),
+    totem: totemLeft() > 0 ? sk('ancestortotem').dmgPct / 100 / (sk('ancestortotem').duration ?? 12) : 0 });
   function priorMyDps() {
     const { hit } = curSheet();
+    if (SHAMAN) { const p = shParts(); return hit * (p.claws + p.crows + p.totem); }
     return hit * (sk('bonebolt').dmgPct / 100 / castSec('bonebolt') + servantCount() * SKEL_DPS + (golemAlive() ? GOLEM_DPS : 0));
   }
   const myDps = () => priorMyDps() * ad.dpsRatio;
-  const splashShare = () => (sk('bonebolt').splashPct ?? 0) / (sk('bonebolt').dmgPct || 1);
+  // Shaman: crows (3 m) and totem (8 m) hit every target, the claws line about half an extra one.
+  const splashShare = () => SHAMAN ? (p => (p.crows + p.totem + 0.5 * p.claws) / (p.claws + p.crows + p.totem))(shParts())
+    : (sk('bonebolt').splashPct ?? 0) / (sk('bonebolt').dmgPct || 1);
 
   // --- Target priority (Smith's rule): incoming dps removed per second of our time.
   function smithScore(dps, hp, ourDps, d, fastKite, onUs) {
@@ -432,7 +469,7 @@
   }
   const meState = () => ({
     dps: myDps(), hp: g.hp, potHeal: (SV.potion.instantPct + SV.potion.hotPct) / 100 * g.life, potions: g.char.potions, potCd: SV.potion.cdSec, splash: splashShare(),
-    soak: 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin,
+    soak: SHAMAN ? shSoak() : 0.2 + 0.2 * Math.min(1, servantCount() / skelCap()), margin: ad.margin,
   });
   // Single-linkage clusters (8 m) of all live visible monsters; a group with a non-target member is not pullable.
   function groupsOf(all, allowed) {
@@ -532,7 +569,8 @@
     const counts = {};
     for (const o of eng) counts[o.m.def?.kind] = (counts[o.m.def?.kind] ?? 0) + 1;
     const kind = st.mainKind = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-    let s = slow >= 0.3 ? 'kite' : 'hold';
+    if (SHAMAN) return 'kite'; // no army to hold behind; kiteMove circles the totem while it stands
+    let s =slow >= 0.3 ? 'kite' : 'hold';
     const rate = x => x && x.ms > 60000 ? x.xp / x.ms : null;
     const rk = rate(ad.strat[`kite|${kind}`]), rh = rate(ad.strat[`hold|${kind}`]);
     if (rk != null && rh != null) s = rk >= rh ? 'kite' : 'hold';
@@ -549,8 +587,10 @@
     return [0, 0];
   }
   // Orbit the enemy centroid at ~9 m, staying inside the zone and flipping direction at walls.
+  // Shaman with a totem up: orbit the totem at 7 m instead (inside its 8 m heal and pulses).
   function kiteMove(me, eng) {
-    const c = centroid(eng), dx = me.x - c.x, dz = me.z - c.z, d = Math.hypot(dx, dz) || 1, R = 9;
+    const tot = SHAMAN && totemLeft() > 0;
+    const c = tot ? st.totemPos : centroid(eng), dx = me.x - c.x, dz = me.z - c.z, d = Math.hypot(dx, dz) || 1, R = tot ? 7 : 9;
     st.orbit ??= 1;
     const radial = (R - d) / R * 1.5;
     let vx = -dz / d * st.orbit + dx / d * radial, vz = dx / d * st.orbit + dz / d * radial;
@@ -589,8 +629,103 @@
     }
     return need * knob('reserve');
   }
+  // --- Shaman (SHAMAN.md): state read off the predicted sim, then priority rules instead of EV.
+  const FORM_FR = ['homme', 'loup', 'ours', 'mammouth', 'corbeau'];
+  const crowsDur = () => (g.char.ch.tree?.sh_murder ? 4.5 : sk('crows').duration ?? 3) * 1000;
+  const crowsLive = () => !!st.crowsPt && now() - st.crowsAt < crowsDur();
+  const totemLeft = () => st.totemAt ? Math.max(0, (sk('ancestortotem').duration ?? 12) - (now() - st.totemAt) / 1000) : 0;
+  const roarReady = () => now() - (st.roarAt ?? -1e9) > (sk('bearform').roarCd ?? 10) * 1000;
+  // Harmony tier: distinct forms entered within the window (15 s, 20 with sh_circle); mammoth is III.
+  // TODO(ceiling): tracked from transitions seen client side; the server count is not exposed.
+  const harmonyTier = (seen, t, win) => Math.min(3, Object.values(seen).filter(at => t - at < win).length);
+  const harmony = () => g.sim.form === 3 ? 3 : harmonyTier(st.formSeen ?? {}, now(), (g.char.ch.tree?.sh_circle ? 20 : 15) * 1000);
+  // Per tick: form transitions (harmony, roar = bear entered with the breath ready), crow and totem casts.
+  function shTick() {
+    const s = g.sim, t = now(), a = s.action;
+    if (s.form !== st.formPrev) {
+      if (st.formPrev != null) { (st.formSeen ??= {})[s.form] = t; if (s.form === 2 && (st.comboPrev ?? 0) <= 0) st.roarAt = t; }
+      st.formPrev = s.form;
+    }
+    st.comboPrev = s.comboTimer;
+    if (a?.type === 'crows' && t - (st.crowsAt ?? -1e9) > 1000) { st.crowsAt = t; st.crowsPt = { x: a.tx, z: a.tz }; }
+    if (a?.type === 'ancestortotem' && t - (st.totemAt ?? -1e9) > 2000) { st.totemAt = t; st.totemPos = { x: a.tx, z: a.tz }; }
+  }
+  // Damage taken saved: harmony 5 % per tier, bear 8 %, mammoth 40 %, crows make 30 % of the swarmed attackers miss.
+  function shSoak() {
+    const f = g.sim.form;
+    if (f === 3) return 0.4;
+    const near = [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0 && dist(m.pos, g.sim) < 8);
+    const cover = crowsLive() && near.length ? near.filter(m => dist(m.pos, st.crowsPt) <= sk('crows').radius).length / near.length : 0;
+    return 0.05 * harmony() + (f === 2 ? 0.08 : 0) + 0.3 * cover;
+  }
+  // Dodge: sh_dodge gives Raven flight a 2nd charge (cd 4 s, usable while cds.roll <= 4), so rolls may chain after 2 s.
+  const rollReady = () => (SHAMAN && g.char.ch.tree?.sh_dodge ? (g.sim.cds?.roll ?? 0) <= 4.01 : ready('roll'))
+    && now() - (st.rollAt ?? 0) > (SHAMAN && g.char.ch.tree?.sh_dodge ? 2000 : 4600);
+  // Mobs on the line from me through each candidate within range (half width w): best direction and its end point.
+  function bestLine(mobs, range, w) {
+    let best = null, bn = 0;
+    for (const o of mobs) {
+      if (o.d > range || o.d < 0.1) continue;
+      const ux = (o.m.pos.x - g.sim.x) / o.d, uz = (o.m.pos.z - g.sim.z) / o.d;
+      let n = 0, far = 0;
+      for (const p of mobs) {
+        const px = p.m.pos.x - g.sim.x, pz = p.m.pos.z - g.sim.z, along = px * ux + pz * uz;
+        if (along > 0 && along < range && Math.abs(px * uz - pz * ux) < w) { n++; far = Math.max(far, along); }
+      }
+      if (n > bn) { bn = n; const r = Math.min(range, far + 2); best = { x: g.sim.x + ux * r, z: g.sim.z + uz * r, n }; }
+    }
+    return best;
+  }
+  // Returns { id, slot, aim, ev (priority), toggle } or null. Forms are toggles: decideRaw presses them once.
+  // In wolf/bear, slots 0/1 are the beast clicks: slot 1 (15-20 spirit, the wolf leaps) is never pressed.
+  function chooseShaman({ mobs, attackers, hpPct, ess }) {
+    const s = g.sim, f = s.form, bar = g.char.bar, res = reserve();
+    const on = id => bar.includes(id) && ready(id), slot = id => bar.indexOf(id), R = id => sk(id).radius, rg = id => sk(id).range;
+    const near = r => mobs.filter(o => o.d <= r), elite = list => list.some(o => o.m.elite || o.m.boss);
+    const contact = attackers.some(o => o.d < 3), canShift = now() > (st.formNext ?? 0), t = mobs.reduce((a, o) => !a || o.d < a.d ? o : a, null);
+    const go = (id, ev, aim = null, extra = {}) => ({ id, slot: slot(id), aim, ev, ...extra });
+    if (f === 4 || /form$/.test(s.action?.type ?? '')) return null; // mid flight or mid shift
+    if (f === 3) { // mammoth: Charge (RMB, cd 3) when ready, else Tusks at the pack
+      if (t && ready('stampede') && t.d <= 10) return { id: 'stampede', slot: 1, aim: t.m.pos, ev: 9 };
+      return t && t.d < 6 ? { id: 'tusks', slot: 0, aim: bestAoe(mobs, 4, 3.6) ?? t.m.pos, ev: 1 } : null;
+    }
+    if (f === 1 || f === 2) { // beast: back to human once the breath is ready again (heal 10 %, +15 spirit)
+      const id = f === 1 ? 'wolfform' : 'bearform';
+      if (s.comboTimer <= 0 && canShift && on(id)) return go(id, 8, null, { toggle: true });
+      return t && t.d < 2.5 ? { id: f === 1 ? 'bite' : 'swipe', slot: 0, aim: t.m.pos, ev: 1 } : null;
+    }
+    // Human form.
+    const bearOk = on('bearform') && canShift && roarReady() && s.comboTimer <= 0;
+    if (hpPct < 0.4 && contact && bearOk && ess >= 10) return go('bearform', 10, null, { toggle: true });
+    if (on('mammoth') && (near(R('mammoth')).length >= 4 || elite(near(R('mammoth'))) || (hpPct < 0.35 && attackers.length >= 2))) return go('mammoth', 9);
+    if (on('ancestortotem')) {
+      const aim = bestAoe(mobs, rg('ancestortotem'), R('ancestortotem')), inR = aim ? mobs.filter(o => dist(o.m.pos, aim) <= R('ancestortotem')) : [];
+      if (inR.length >= 2 || elite(inR)) return go('ancestortotem', 7, aim);
+    }
+    if (on('boarcharge')) {
+      const ln = bestLine(mobs, rg('boarcharge'), R('boarcharge'));
+      if (ln && (ln.n >= 2 || elite(near(rg('boarcharge'))) || (contact && hpPct < 0.6))) return go('boarcharge', 6, ln);
+    }
+    if (on('primalcall')) {
+      const aim = bestAoe(mobs, rg('primalcall'), R('primalcall')), inR = aim ? mobs.filter(o => dist(o.m.pos, aim) <= R('primalcall')) : [];
+      if (inR.length >= 2 || elite(inR)) return go('primalcall', 5, aim);
+    }
+    // Circle weave: monsters within 5 m and the breath ready: bear (roar ready) or wolf, back to human 3 s later.
+    if (near(5).length && s.comboTimer <= 0 && canShift && ess >= Math.max(5, res)) {
+      if (bearOk) return go('bearform', 4, null, { toggle: true });
+      if (on('wolfform')) return go('wolfform', 4, null, { toggle: true });
+    }
+    // One swarm at a time: recast when expired or empty (non-classic weapons: weak RMB, skipped).
+    if (bar.includes('crows') && !sk('crows').sec && !(crowsLive() && mobs.some(o => dist(o.m.pos, st.crowsPt) <= R('crows')))) {
+      const aim = bestAoe(mobs, rg('crows'), R('crows'));
+      if (aim) return go('crows', 3, aim);
+    }
+    const aim = bestAoe(mobs, rg('spiritclaws'), 1.5); // 3 m line under the cursor
+    return aim ? go('spiritclaws', 2, aim) : null;
+  }
   // TODO(ceiling): utility horizons (skeleton 20 s, golem 30 s) are guesses; xp/s learning does not tune them.
   function chooseSkill(ctx) {
+    if (SHAMAN) return chooseShaman(ctx);
     const { mobs, me, attackers, hpPct, hpDrop, ess } = ctx;
     const hit = curSheet().hit, essVal = SV.essence.valuePerPoint / 100 * hit;
     const missing = skelCap() - servantCount(), raiseOn = g.char.bar.includes('raise');
@@ -665,14 +800,14 @@
 
   // Build plan (build.json, injected by run.mjs as window.__botBuild): talents, attributes, bar.
   const BUILD = window.__botBuild;
-  const BASE_SKILLS = ['bonebolt', 'blight'];
+  const BASE_SKILLS = SHAMAN ? ['spiritclaws', 'crows'] : ['bonebolt', 'blight'];
   // TODO(ceiling): allies carry no owner field: skeletons within 25 m are assumed to be ours.
-  const servantCount = () => myAllies().filter(a => a.def?.kind === 'skeleton').length;
+  const servantCount = () => SHAMAN ? 0 : myAllies().filter(a => a.def?.kind === 'skeleton').length;
   // TODO(ceiling): allies carry no owner field: any ally within 25 m is assumed to be ours.
   const myAllies = () => [...g.entities.allies.values()].map(a => a.view).filter(v => v && !v.dead && dist(v.pos, g.sim) < 25);
   // The flesh golem ally uses the `abomination` monster def (client tints ally abominations, L70353).
-  const golemAlive = () => myAllies().some(v => v.def?.kind === 'abomination');
-  const skelCap = () => g.level >= 15 ? 6 : g.level >= 8 ? 5 : 4;
+  const golemAlive = () => !SHAMAN && myAllies().some(v => v.def?.kind === 'abomination');
+  const skelCap = () => SHAMAN ? 0 : g.level >= 15 ? 6 : g.level >= 8 ? 5 : 4;
   function progress() {
     if (!BUILD || now() - (st.progAt ?? 0) < 3000) return;
     st.progAt = now();
@@ -799,7 +934,7 @@
   }
 
   // Gear: equip better items from the bag, keep future upgrades, sell the rest at Bertrand.
-  const myWeapons = () => Object.keys(SV.gear?.weaponBases ?? {}).filter(k => k !== 'rule').concat(SV.gear ? [] : ['bonewand', 'deathstaff']);
+  const myWeapons = () => Object.keys(SV.gear?.weaponBases ?? {}).filter(k => k !== 'rule').concat(SV.gear ? [] : SHAMAN ? ['totem', 'antlerstaff', 'hatchet'] : ['bonewand', 'deathstaff']);
   const reqLvl = it => Math.max(1, Math.min(200, Number.isFinite(it.ilvl) ? (Math.floor(it.ilvl) === 31 ? 30 : Math.floor(it.ilvl)) : 1));
   // Score: dps x sqrt(EHP) of the whole sheet with `it` worn.
   function gearScore(it) {
@@ -1154,6 +1289,7 @@
     { id: 'brumelande', x: -124, z: 44 }, { id: 'cendre', x: 128, z: -9 }, { id: 'necropole', x: 30, z: -133 },
     { id: 'rochenoire', x: -94, z: -88 }, { id: 'forteresse', x: 157, z: -62 }, { id: 'citadelle', x: -27, z: -178 },
     { id: 'moisivert', x: -104, z: 128 }, { id: 'givrecroc', x: 6, z: 142 }, { id: 'faille', x: 132, z: 126 },
+    { id: 'puits', x: 40, z: 196 }, { id: 'coeur', x: 170, z: 192 },
   ];
   const awake = () => WAYS.filter(w => g.char.ways?.includes(w.id));
   const nearestWay = (p, list) => list.reduce((b, w) => !b || dist(w, p) < dist(b, p) ? w : b, null);
@@ -1313,8 +1449,21 @@
   // One decision per sim tick: returns movement, aim point and bar slots to hold.
   function decide() {
     const d = decideRaw();
+    if (SHAMAN) shForms(d);
     d.move = unstick(d.move);
     return d;
+  }
+  // Shaman toggles are pressed once: the key stays down only until the shift starts (cd up), the form changes or
+  // 600 ms pass; held longer, the form would flip back at every 1.5 s cooldown. Out of a fight, wolf/bear go back
+  // to human as soon as the breath is ready (no spirit burn, heal 10 %).
+  function shForms(d) {
+    const s = g.sim, r = st.formReq;
+    if (r && (s.form !== r.from || !ready(r.id) || now() - r.at > 600)) { st.formReq = null; st.formNext = now() + 300; }
+    else if (r) { d.slots = [r.slot]; return; }
+    const id = s.form === 1 ? 'wolfform' : s.form === 2 ? 'bearform' : null;
+    if (id && !d.slots.length && s.comboTimer <= 0 && !s.action && now() > (st.formNext ?? 0) && ready(id) && g.char.bar.includes(id)) {
+      st.formReq = { id, slot: g.char.bar.indexOf(id), from: s.form, at: now() }; d.slots = [st.formReq.slot];
+    }
   }
   // Loot income per arm: gold gained plus the sale value of items seen for the first time (shop trips excluded).
   function trackLoot(zs) {
@@ -1362,6 +1511,7 @@
     // hp trend over the last ~2 s, for ossature
     if (tick - (st.hpAt ?? 0) > 2000) { st.hpDrop = hpPct < (st.hpPrev ?? hpPct) - 0.03; st.hpPrev = hpPct; st.hpAt = tick; }
     let move = [0, 0], aim = null, slots = [], roll = false;
+    if (SHAMAN) shTick();
 
     // --- reflexes
     // Local cooldown guard: g.potionCd only updates after the server answers.
@@ -1372,7 +1522,7 @@
     const esc = teleEscape(me);
     if (esc) {
       st.reflex = 'esquive attaque annoncée';
-      roll = ready('roll') && now() - (st.rollAt ?? 0) > 4600;
+      roll = rollReady();
       if (roll) { st.rollAt = now(); st.teleDodges = (st.teleDodges ?? 0) + 1; }
       st.last = 'esquive une attaque annoncée';
       return { move: steer(...esc), aim: null, slots: [], roll };
@@ -1380,7 +1530,7 @@
     const ret = retreatTick(me);
     if (ret) {
       const t = threat(me);
-      roll = !!t && ready('roll') && now() - (st.rollAt ?? 0) > 4600;
+      roll = !!t && rollReady();
       if (roll) st.rollAt = now();
       return { move: ret, aim: null, slots: [], roll };
     }
@@ -1431,21 +1581,30 @@
       else if (d > KITE_MAX) { move = travelPath({ x: target.pos.x, z: target.pos.z }, 'fight'); st.last = `tire ${plan.k} groupe(s) ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`; }
       else st.last = `combat ${target.def?.kind ?? '?'} ${d.toFixed(1)}m`;
 
+      // Shaman mammoth: stay in contact (tusks arc 3.6 m), damage taken -40 %.
+      if (SHAMAN && g.sim.form === 3 && hpPct >= fleeAt()) { move = d > 2.5 ? steer(target.pos.x - me.x, target.pos.z - me.z) : [0, 0]; st.last = `mammouth ${d.toFixed(1)}m`; }
       // Targets for skills: the chosen target first in the list so ties aim at it.
-      const pick = chooseSkill({ mobs: [tgtO, ...ranked.filter(o => o !== tgtO)], me, attackers, hpPct, hpDrop: st.hpDrop, ess: g.sim.fury ?? 0 });
+      const pick = SHAMAN && st.formReq ? null : chooseSkill({ mobs: [tgtO, ...ranked.filter(o => o !== tgtO)], me, attackers, hpPct, hpDrop: st.hpDrop, ess: g.sim.fury ?? 0 });
       st.skill = pick ? `${pick.id} ${pick.ev.toFixed(1)}` : null;
       if (pick && pick.slot >= 0) {
         slots.push(pick.slot);
         if (pick.aim) aim = { x: pick.aim.x, z: pick.aim.z };
         if (pick.id === 'fleshgolem') st.golemAt = now();
+        if (pick.toggle) st.formReq = { id: pick.id, slot: pick.slot, from: g.sim.form, at: now() };
       }
       const t = threat(me);
-      if (t && ready('roll') && now() - (st.rollAt ?? 0) > 4600) {
+      if (t && rollReady()) {
         st.rollAt = now();
         roll = true;
         move = steer(me.x - t.pos.x, me.z - t.pos.z);
       }
-      if (!slots.length && d < 13) slots.push(0);
+      // Shaman survival: low hp with an attacker in contact and no bear roar available: Raven flight away.
+      const close = SHAMAN && hpPct < 0.4 && pick?.id !== 'bearform' ? attackers.filter(o => o.d < 3) : [];
+      if (!roll && close.length && rollReady()) {
+        const c = centroid(close); st.rollAt = now(); roll = true; move = steer(me.x - c.x, me.z - c.z);
+      }
+      // Shaman: in wolf/bear slot 0 is a beast click, and nothing while a shift is cast.
+      if (!slots.length && (SHAMAN ? d < 12 && (g.sim.form === 0 || g.sim.form === 3) && !/form$/.test(g.sim.action?.type ?? '') : d < 13)) slots.push(0);
     } else {
       // Farm: head for the nearest monster of the planned pull, otherwise wander across the zone.
       const lure = mobs.find(o => plan.ids.has(o.m.id))?.m;
@@ -1563,7 +1722,9 @@
   const GOAL_FR = { fight: 'combat', shop: 'boutique', talk: 'quête PNJ', loot: 'butin', dungeon: 'donjon', explore: 'exploration', farm: 'farm' };
   const bar10 = v => '█'.repeat(Math.round(Math.min(1.75, Math.max(0, v)) / 1.75 * 10)).padEnd(10, '·');
   const esc = t => String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const shHud = () => `forme ${FORM_FR[g.sim.form] ?? g.sim.form}  harmonie ${'0 I II III'.split(' ')[harmony()]}  totem ${Math.round(totemLeft())}s`;
   const hudTimer = setInterval(() => {
+    if (SHAMAN && !st.on) shTick(); // keep form/totem tracking while paused (manual play)
     if (hud.hidden) return;
     const sc = st.scores ?? {};
     const rows = Object.keys(GOAL_FR).map(k => {
@@ -1572,14 +1733,14 @@
       return `${on ? '▶' : ' '} ${GOAL_FR[k].padEnd(10)} ${bar10(sc[k] ?? 0)} ${(sc[k] ?? 0).toFixed(2)}${on && left ? `  min ${left}s` : ''}`;
     }).join('\n');
     const hp = g.life ? Math.round(g.hp / g.life * 100) : 0;
-    hud.innerHTML = `<b style="color:#d9b26f">BOT ${st.on ? 'ON' : 'OFF'}</b>  niv ${g.level}  PV ${hp}%  potions ${g.char.potions}  ess ${Math.round(g.sim.fury ?? 0)}\n`
+    hud.innerHTML = `<b style="color:#d9b26f">BOT ${st.on ? 'ON' : 'OFF'}</b>  niv ${g.level}  PV ${hp}%  potions ${g.char.potions}  ${SHAMAN ? 'esprit' : 'ess'} ${Math.round(g.sim.fury ?? 0)}\n`
       + `réflexe : ${esc(st.reflex ?? '-')}\n`
       + `<span style="color:#8fb3a8">objectifs (inertie +${INERTIA})</span>\n${esc(rows)}\n`
       + `action : <b>${esc(st.last)}</b>\n`
       + `cible  : ${esc(st.target ?? '-')}\n`
       + `zone   : ${esc(st.zone ?? '-')}\n`
       + `quête  : ${esc(st.quest?.label ?? '-')}\n`
-      + `touches: ${esc([...st.pressed].join(' ') || '-')}  squelettes ${servantCount()}/${skelCap()}\n`
+      + `touches: ${esc([...st.pressed].join(' ') || '-')}  ${SHAMAN ? shHud() : `squelettes ${servantCount()}/${skelCap()}`}\n`
       + `<span style="color:#8fb3a8">modèle</span>\n`
       + `stratégie ${esc(st.strat ?? '-')}  pull ${st.plan?.k ?? 0} grp (options ${st.plan?.opts.length ?? 0})  marge ${ad.margin.toFixed(2)}\n`
       + `smith  : ${esc((st.top ?? []).join(' | ') || '-')}\n`
@@ -1643,6 +1804,7 @@
       quest: { frac: +ad.qx.frac.toFixed(3), rate: ad.qx.rate, talkMs: Math.round(ad.qx.talk), durMin: Math.round(ad.qx.dur / 60000) },
       deathCost: Math.round(deathCostXp()), sales: st.sales ?? [], fightsQueued: fights.length,
       zone: g.zoneName, farm: st.zone ?? 'fixe', pos: [Math.round(g.sim.x), Math.round(g.sim.z)], home: st.home,
+      ...(SHAMAN && { spirit: Math.round(g.sim.fury ?? 0), form: FORM_FR[g.sim.form] ?? g.sim.form, harmony: harmony(), totem: Math.round(totemLeft()), combo: +Math.max(0, g.sim.comboTimer).toFixed(1) }),
     }),
   };
   // Self-check of the pure decision math.
@@ -1687,6 +1849,8 @@
     if (ha[0] !== ha2[0] || ha[1] !== ha2[1] || hb[0] !== hb2[0] || hb[1] !== hb2[1] || st.navs.a.goal !== ga) fail('nav cache per caller');
     st.navs = navKeep;
     // Fight boundary: still on within the gap, over after it or at death.
+    // Shaman harmony: forms entered inside the window count once each, capped at III.
+    if (harmonyTier({ 0: 9000, 1: 5000, 2: 100 }, 10000, 15000) !== 3 || harmonyTier({ 1: 0, 2: 9000 }, 20000, 15000) !== 1) fail('harmony tier');
     if (fightOver(1000, 1000 + FIGHT_GAP - 1, false) || !fightOver(1000, 1000 + FIGHT_GAP + 1, false) || !fightOver(1000, 1001, true)) fail('fight boundary');
   })();
 

@@ -1,5 +1,5 @@
 // Usage: node run.mjs [start|load|assist|stop|status]
-// assist: only the manual-play assist panel (F6); the necro bot is loaded paused when the character is a necromancer.
+// assist: only the manual-play assist panel (F6); the bot is loaded paused when the class is supported (necromancer, shaman).
 // Attaches to Brave (debug port 9222), injects the bot, prints its status every 10 s,
 // and re-injects it after a page reload (game update, reconnect).
 import { chromium } from 'playwright';
@@ -17,15 +17,18 @@ if (cmd === 'stop' || cmd === 'status') {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const src = () => fs.readFileSync(new URL('./bot.page.js', import.meta.url), 'utf8');
-const build = () => JSON.parse(fs.readFileSync(new URL('./build.json', import.meta.url), 'utf8'));
-// Skill/gear numbers from the analyst; the bot falls back to inline defaults when missing or invalid.
-const skills = () => { try { return JSON.parse(fs.readFileSync(new URL('./skill_values.json', import.meta.url), 'utf8')); } catch { return null; } };
+// Per-class data files: build plan, then skill/gear numbers (the bot falls back to inline defaults when missing or invalid).
+const FILES = { necromancer: ['build.json', 'skill_values.json'], shaman: ['shaman_build.json', 'shaman_skills.json'] };
+const build = cls => JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][0], import.meta.url), 'utf8'));
+const skills = cls => { try { return JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][1], import.meta.url), 'utf8')); } catch { return null; } };
 
 async function inject() {
   while (!(await page.evaluate(() => !!window.__game?.inWorld && !!window.__game.char).catch(() => false))) await sleep(2000);
-  const necro = await page.evaluate(() => window.__game.char.ch.cls === 'necromancer');
-  if (cmd !== 'assist' || necro) {
-    await page.evaluate(([b, k]) => { window.__botBuild = b; window.__botSkills = k; }, [build(), skills()]);
+  const cls = await page.evaluate(() => window.__game.char.ch.cls);
+  // TODO(ceiling): start/load on an unsupported class still use the necro files, as before.
+  const fcls = FILES[cls] ? cls : 'necromancer';
+  if (cmd !== 'assist' || FILES[cls]) {
+    await page.evaluate(([b, k]) => { window.__botBuild = b; window.__botSkills = k; }, [build(fcls), skills(fcls)]);
     console.log(await page.evaluate(src()));
     // Optional overlay (F10): skipped when missing or broken, never blocks the bot.
     try { console.log(await page.evaluate(fs.readFileSync(new URL('./viz.page.js', import.meta.url), 'utf8'))); }
