@@ -28,9 +28,11 @@ const FILES = { necromancer: ['build.json', 'skill_values.json'], shaman: ['sham
 const build = cls => JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][0], import.meta.url), 'utf8'));
 const skills = cls => { try { return JSON.parse(fs.readFileSync(new URL('./' + FILES[cls][1], import.meta.url), 'utf8')); } catch { return null; } };
 
+let injectedFor = null; // character name the scripts were injected for
 async function inject() {
   while (!(await page.evaluate(() => !!window.__game?.inWorld && !!window.__game.char).catch(() => false))) await sleep(2000);
   const cls = await page.evaluate(() => window.__game.char.ch.cls);
+  injectedFor = await page.evaluate(() => window.__game.char.name);
   // TODO(ceiling): start/load on an unsupported class still use the necro files, as before.
   const fcls = FILES[cls] ? cls : 'necromancer';
   if (cmd !== 'assist' || FILES[cls]) {
@@ -55,6 +57,9 @@ await inject();
 for (;;) {
   const s = await page.evaluate(a => a ? (window.__assist ? window.__bot?.status() ?? { assist: window.__assist.opt } : null) : window.__bot?.status() ?? null, cmd === 'assist').catch(() => null);
   if (!s) { console.log(new Date().toLocaleTimeString('fr-FR'), 'bot déchargé (page rechargée), réinjection'); await inject(); continue; }
+  // Character switched without a page reload (or back from the character list): reload the scripts for its class.
+  const who = await page.evaluate(() => window.__game?.inWorld ? window.__game.char?.name ?? null : null).catch(() => null);
+  if (who && who !== injectedFor) { console.log(new Date().toLocaleTimeString('fr-FR'), `personnage ${who}, réinjection`); await inject(); continue; }
   console.log(new Date().toLocaleTimeString('fr-FR'), JSON.stringify(s));
   // Fight dataset: one JSON line per fight summary drained from the page.
   const fights = await page.evaluate(() => window.__bot?.drainFights?.() ?? []).catch(() => []);
