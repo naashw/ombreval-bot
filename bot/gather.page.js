@@ -9,7 +9,10 @@
   // Learned memory (this browser only): gather duration, respawn, xp per node type, strike timing, danger spots.
   const AD_KEY = 'ombreval-gather';
   const ad = (() => { try { return JSON.parse(localStorage.getItem(AD_KEY)) ?? {}; } catch { return {}; } })();
-  ad.dur ??= {}; ad.gdur ??= {}; ad.back ??= {}; ad.xp ??= {}; ad.spots ??= []; ad.avoid ??= {}; ad.leash ??= {}; ad.risk ??= [];
+  // v2 migration: drop the doubling avoid timers and hour-long danger spots (risk is now a decaying cost).
+  if ((ad.v ?? 1) < 2) { delete ad.spots; delete ad.avoid; delete ad.risk; ad.v = 2; }
+  ad.dur ??= {}; ad.gdur ??= {}; ad.back ??= {}; ad.xp ??= {}; ad.leash ??= {};
+  ad.area ??= {}; ad.aggro ??= {}; ad.mspd ??= {}; ad.mdps ??= {}; ad.chaseS ??= 15;
   ad.strike ??= [0, 0.5, 1].map(k => ({ k, ok: 0, n: 0 })); ad.rtt ??= 150; ad.bf ??= 0; ad.bfN ??= 0; ad.detour ??= 1.25; ad.wayCost ??= 25;
   ad.tot ??= {};
   const saveAd = () => { try { localStorage.setItem(AD_KEY, JSON.stringify(ad)); } catch {} };
@@ -66,43 +69,116 @@
     { id: 'rift', name: 'La Faille', x: 160, z: 150, r: 38, lvl: [27, 30] },
   ];
   const zoneOf = p => ZONES.reduce((b, z) => !b || dist(z, p) - z.r < dist(b, p) - b.r ? z : b, null);
-  // Survivable tier: the zone's top monster level at most 2 above ours.
-  const zoneOk = n => zoneOf(n).lvl[1] <= g.level + 2;
 
   const st = { on: false, phase: 'idle', node: null, last: '', pressed: new Set(), black: new Map(), stats: {}, onMs: 0, flip: new Map() };
 
-  // --- Danger (copy, simplified): no engagement model, a monster is too strong by level/rank, 3+ chasers are a crowd.
+  // --- Danger: no level caps. Every node pays an expected cost in seconds:
+  // risk = P(attacked on the trip) x [P(death | attacked) x death cost + (1 - P(death | attacked)) x cost of the attack].
   const ATTACK_STATES = ['chase', 'windup', 'strike'];
   const CHASE_STATES = ['chase', 'windup', 'strike', 'recover', 'leap'];
-  const CHASE_PRIOR = 14;
+  const CHASE_PRIOR = 14, AGGRO_PRIOR = 10, HALF_LIFE = 600000, RESPAWN_S = 10, BASE_ATTACK = 0.15, MARGIN = 0.1;
   const chaseRange = kind => ad.leash[kind]?.d ?? CHASE_PRIOR;
-  const converging = (m, d) => ATTACK_STATES.includes(m.state) && d < chaseRange(m.def?.kind) + (m.def?.speed ?? PLAYER_SPEED);
+  const aggroR = kind => Math.min(20, ad.aggro[kind]?.d ?? AGGRO_PRIOR);
+  const mSpeed = m => ad.mspd[m.def?.kind]?.v ?? m.def?.speed ?? PLAYER_SPEED;
+  const converging = (m, d) => ATTACK_STATES.includes(m.state) && d < chaseRange(m.def?.kind) + mSpeed(m);
   const retreatOver = (state, d, range, speed) => !CHASE_STATES.includes(state) || (range != null && d > range + speed);
-  const strongM = m => !!(m.elite || m.boss) || (m.level ?? 1) >= g.level + 2;
   const live = () => [...g.entities.visibleMonsters()].filter(m => !m.dead && m.hp > 0);
-  const AVOID_PRIOR = 60000;
-  const avoidNext = (ms, rehit) => rehit ? ms * 2 : Math.max(AVOID_PRIOR, ms / 2);
-  const inDanger = p => ad.spots.some(s => Date.now() < s.until && Math.hypot(p.x - s.x, p.z - s.z) < s.r);
-  function remember(kind, p, r, ret) {
-    const t = Date.now(), ms = ad.avoid[kind] ??= AVOID_PRIOR;
-    const s = ad.spots.find(x => x.kind === kind && Math.hypot(x.x - p.x, x.z - p.z) < x.r);
-    if (!s) { ad.spots.push({ x: p.x, z: p.z, kind, r, until: t + ms, ret, zone: zoneOf(p).id }); return; }
-    if (s.ret !== ret) { s.ret = ret; ad.avoid[kind] = avoidNext(ms, true); }
-    s.until = Math.max(s.until, t + ad.avoid[kind]);
+  const lvlScale = l => 1 + 0.1 * Math.max(0, (l ?? 1) - 1);
+  // Monster dps per kind (normalized to level 1): damage / exposure in reach, prior worth 5 s of a guessed dps. TODO(ceiling): prior is a guess.
+  const mDps = m => {
+    const e = ad.mdps[m.def?.kind], p = (m.def?.dmg ?? 1) * 4;
+    return ((e?.d ?? 0) + 5 * p) / ((e?.e ?? 0) + 5) * lvlScale(m.level) * (m.elite ? 2 : 1) * (m.boss ? 4 : 1);
+  };
+  const myDps = () => (g.stats?.dps ?? 5) * 0.8; // basic clicks only
+  const reachOf = m => (m.def?.radius ?? 0.6) + 1.5;
+  // Fight check: kill the quickest first; damage taken = each monster's dps over its lifetime.
+  function fightCost(o, dps, hp, life) {
+    const s = o.map(m => ({ hp: m.hp, dps: m.dps })).sort((a, b) => a.hp / a.dps - b.hp / b.dps);
+    let t = 0, taken = 0;
+    for (const m of s) { t += m.hp / dps; taken += m.dps * t; }
+    return { ttk: t, taken, win: taken < hp - MARGIN * life };
   }
-  function expireSpots() {
-    const t = Date.now();
-    ad.spots = ad.spots.filter(s => {
-      if (t < s.until + (ad.avoid[s.kind] ?? AVOID_PRIOR)) return true;
-      ad.avoid[s.kind] = avoidNext(ad.avoid[s.kind] ?? AVOID_PRIOR, false);
-      return false;
-    });
+  const fight = (ms, hp = g.hp) => fightCost(ms.map(m => ({ hp: m.hp, dps: mDps(m) })), myDps(), hp, g.life);
+  const riskSec = (pa, pd, deathS, hitS) => pa * (pd * deathS + (1 - pd) * hitS);
+  const regen = () => ad.regen ?? 1; // hp/s while resting, learned
+  // Area memory: trips n, attacked a, deaths d, all decaying with a 10 min half-life (never a ban).
+  function area(id) {
+    const a = ad.area[id] ??= { n: 0, a: 0, d: 0, t: Date.now() }, k = 0.5 ** ((Date.now() - a.t) / HALF_LIFE);
+    a.n *= k; a.a *= k; a.d *= k; a.t = Date.now();
+    return a;
   }
-  // Area risk: retreats and deaths in the last hour, as seconds added to a node's cost.
-  const riskSec = z => ad.risk.filter(r => r.z === z && Date.now() - r.t < 3600000).reduce((a, r) => a + (r.death ? 120 : 20), 0);
-  const addRisk = (p, death) => { ad.risk = ad.risk.filter(r => Date.now() - r.t < 3600000).concat({ z: zoneOf(p).id, t: Date.now(), death }); saveAd(); };
-  // Node blocked by a live monster near it: too strong, or a pack of 3 within 10 m.
-  const mobRisk = (n, ms) => ms.some(m => strongM(m) && dist(m.pos, n) < 12) || ms.filter(m => dist(m.pos, n) < 10).length >= 3;
+  // Trip = one node visit; ends on gather end, retreat or death.
+  const tripHit = () => { const t = st.trip; if (t && !t.hit) { t.hit = true; area(t.z).a++; } };
+  // A death after the trip ended (retreat) still counts against the area we died in.
+  const tripEnd = death => {
+    const t = st.trip;
+    if (!t) { if (death) { area(zoneOf(g.sim).id).d++; saveAd(); } return; }
+    const a = area(t.z); a.n++; if (death) { if (!t.hit) a.a++; a.d++; } st.trip = null; saveAd();
+  };
+  // Death cost: respawn, walk back from the bound stone, xp lost at the character's farming rate.
+  const CHAR_XPS = () => ad.charXps ?? 0.5 + 0.3 * g.level; // learned while __bot levels us, prior guessed
+  function deathSec(n) {
+    const rsp = ad.respawn ?? WAYS[0], walk = trip(rsp, n).len / speed();
+    return RESPAWN_S + walk + (ad.lossK ?? 0.1) * (g.char.ch.xp ?? 0) / CHAR_XPS();
+  }
+  const segDist = (p, a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / L)) : 0;
+    return Math.hypot(p.x - a.x - t * dx, p.z - a.z - t * dz);
+  };
+  function nodeRisk(n, me, ms, hp = g.hp) {
+    const z = zoneOf(n), A = area(z.id), near = [];
+    // Prior: live monsters by their aggro radius around the node and the leg to it, plus a base rate for roamers.
+    let q = 1 - BASE_ATTACK;
+    for (const m of ms) {
+      const dn = dist(m.pos, n), d = Math.min(dn, segDist(m.pos, me, n)), r = aggroR(m.def?.kind);
+      const e = d < r ? 0.7 : d < r + 8 ? 0.7 * (r + 8 - d) / 8 : 0;
+      if (e) q *= 1 - e;
+      if (dn < r + 8) near.push(m);
+    }
+    const pa = (A.a + 2 * (1 - q)) / (A.n + 2);
+    const f = near.length ? fight(near, hp) : null;
+    const pd0 = f ? (f.win ? 0.05 : near.every(m => mSpeed(m) < speed()) ? 0.2 : 0.6) : Math.min(1, g.life / Math.max(1, hp) / (1 + Math.exp(3 - (z.lvl[1] - g.level))));
+    const pd = (A.d + 2 * pd0) / (A.a + 2);
+    // Attack cost: a won fight costs its duration plus the hp to regenerate; else the learned cost of a chase.
+    return riskSec(pa, pd, deathSec(n), f?.win ? f.ttk + f.taken / regen() : ad.chaseS);
+  }
+
+  // Threat: chasing or recently hitting us. Damage predicted over horizon H (what is left to do here):
+  // faster monsters reach us at once, slower ones only once we stand still at the node (after tLeft).
+  const threats = me => live().filter(m => { const d = dist(m.pos, me); return converging(m, d) || (d < 6 && now() - (hitAt.get(m.id) ?? -1e9) < 3000); });
+  function dmgOver(ms, me, H, tLeft) {
+    let s = 0;
+    for (const m of ms) {
+      const v = mSpeed(m), gap = Math.max(0, dist(m.pos, me) - reachOf(m)), ta = v >= speed() || !tLeft ? gap / v : Math.max(tLeft, gap / v);
+      s += mDps(m) * Math.max(0, H - ta);
+    }
+    return s;
+  }
+  const hpLog = [];
+  function hpTrend() { // observed incoming dps over the last 3 s
+    const t = now(); hpLog.push([t, g.hp]);
+    while (hpLog.length > 2 && t - hpLog[0][0] > 3000) hpLog.shift();
+    const [t0, h0] = hpLog[0];
+    return t - t0 > 500 ? Math.max(0, (h0 - g.hp) / ((t - t0) / 1000)) : 0;
+  }
+  // Learning per tick: aggro radius (idle -> chase distance), chase speed, monster dps (hits / exposure in reach).
+  const mPrev = new Map(), dmgWin = { dmg: {}, exp: {}, at: now() };
+  function monTick(me, dt) {
+    for (const m of live()) {
+      const k = m.def?.kind, d = dist(m.pos, me), was = mPrev.get(m.id);
+      if (was && !CHASE_STATES.includes(was) && m.state === 'chase' && d < 25) { const e = ad.aggro[k] ??= { d: AGGRO_PRIOR, n: 0 }; e.d = ema(e.d, d, e.n++); }
+      if (m.state === 'chase' && d < 30 && m.speedNow > 0.6 * (m.def?.speed ?? PLAYER_SPEED)) { const e = ad.mspd[k] ??= { v: m.speedNow, n: 0 }; e.v = ema(e.v, m.speedNow, e.n++); }
+      if (ATTACK_STATES.includes(m.state) && d < reachOf(m) + 0.5) dmgWin.exp[k] = (dmgWin.exp[k] ?? 0) + dt / 1000;
+      mPrev.set(m.id, m.state);
+    }
+    if (mPrev.size > 300) mPrev.clear();
+    if (now() - dmgWin.at < 4000) return;
+    for (const k in dmgWin.exp) {
+      const e = ad.mdps[k] = ad.mdps[k]?.e != null ? ad.mdps[k] : { d: 0, e: 0 }, f = e.e > 300 ? 0.5 : 1; // keep ~5 min of exposure
+      e.d = e.d * f + (dmgWin.dmg[k] ?? 0); e.e = e.e * f + dmgWin.exp[k];
+    }
+    dmgWin.dmg = {}; dmgWin.exp = {}; dmgWin.at = now();
+  }
 
   function pickRetreat(me, chasers, cands, cur, vRatio) { // copy
     const clear = c => Math.min(...chasers.map(p => dist(p, c))) - dist(me, c) * vRatio;
@@ -112,33 +188,25 @@
     return best;
   }
   function retreatCands(me) {
-    const out = [];
+    const out = [], idle = live().filter(m => !CHASE_STATES.includes(m.state));
     for (let i = 0; i < 12; i++) {
       const a = i * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
       out.push({ x: me.x + c * 20, z: me.z + s * 20 }, { x: me.x + c * 40, z: me.z + s * 40 });
     }
     for (const w of awake()) out.push(w);
-    return out.filter(p => !solid(p.x, p.z) && !inDanger(p));
+    return out.filter(p => !solid(p.x, p.z) && !idle.some(m => dist(m.pos, p) < aggroR(m.def?.kind)));
   }
-  // Retreat reflex (copy of retreatTick without the dps model): lasts until every chaser gave up.
+  function startRetreat(ms, why) {
+    if (!st.retreat) { st.retreats = (st.retreats ?? 0) + 1; st.retreat = { ids: new Map(), t0: now(), trip0: st.trip?.t0 ?? now(), hp0: g.hp, target: null, why }; tripHit(); tripEnd(false); }
+    const r = st.retreat;
+    for (const m of ms) if (!r.ids.has(m.id)) r.ids.set(m.id, m.state);
+  }
+  // Retreat (copy of retreatTick): lasts until every chaser gave up; a faster chaser we can beat gets fought.
   function retreatTick(me) {
-    expireSpots();
     if (g.dungeon) { st.retreat = null; return null; }
-    const conv = live().filter(m => converging(m, dist(m.pos, me)));
-    const strong = conv.filter(strongM), crowd = conv.length >= 3;
-    if (strong.length || crowd) {
-      if (!st.retreat) { addRisk(me, false); st.retreats = (st.retreats ?? 0) + 1; }
-      const r = st.retreat ??= { ids: new Map(), t0: now(), target: null, why: strong.length ? 'ennemi trop fort' : `foule de ${conv.length}` };
-      for (const m of crowd ? conv : strong) if (!r.ids.has(m.id)) r.ids.set(m.id, m.state);
-      for (const m of strong) remember(m.def?.kind ?? '?', m.pos, chaseRange(m.def?.kind) + (m.def?.speed ?? PLAYER_SPEED), r.t0);
-      if (crowd) {
-        const c = { x: conv.reduce((a, m) => a + m.pos.x, 0) / conv.length, z: conv.reduce((a, m) => a + m.pos.z, 0) / conv.length };
-        remember('foule', c, CHASE_PRIOR + Math.max(...conv.map(m => dist(m.pos, c))), r.t0);
-      }
-    }
     const r = st.retreat;
     if (!r) return null;
-    const chasers = [];
+    const chasers = [], ms = [];
     let vMax = 0;
     for (const [id, last] of r.ids) {
       const m = g.entities.monsters.get(id)?.view;
@@ -146,10 +214,12 @@
       const d = dist(m.pos, me), kind = m.def?.kind;
       if (last === 'chase' && !CHASE_STATES.includes(m.state)) { const e = ad.leash[kind] ??= { d, n: 0 }; e.d = ema(e.d, d, e.n++); }
       r.ids.set(id, m.state);
-      if (retreatOver(m.state, d, ad.leash[kind]?.d, m.def?.speed ?? PLAYER_SPEED)) { r.ids.delete(id); continue; }
-      chasers.push(m.pos); vMax = Math.max(vMax, m.def?.speed ?? PLAYER_SPEED);
+      if (retreatOver(m.state, d, ad.leash[kind]?.d, mSpeed(m))) { r.ids.delete(id); continue; }
+      chasers.push(m.pos); ms.push(m); vMax = Math.max(vMax, mSpeed(m));
     }
-    if (!chasers.length) { st.retreat = null; st.node = null; return null; }
+    // Chase cost: the whole wasted trip plus the hp lost, at the regen rate.
+    if (!chasers.length) { ad.chaseS = ema(ad.chaseS, (now() - r.trip0) / 1000 + Math.max(0, r.hp0 - g.hp) / regen(), 4); st.retreat = null; st.node = null; return null; }
+    if (vMax >= speed() && fight(ms).win) { st.retreat = null; return null; } // can't outrun, can win: the fight branch takes over
     r.target = pickRetreat(me, chasers, retreatCands(me), r.target, vMax / speed());
     st.last = `repli (${r.why})`;
     if (r.target) return travelPath(r.target, 'retreat');
@@ -200,7 +270,8 @@
   function findPath(from, to) {
     const sx = Math.round(from.x), sz = Math.round(from.z), tx = Math.round(to.x), tz = Math.round(to.z);
     const K = (x, z) => x * 100003 + z, h = (x, z) => Math.hypot(x - tx, z - tz);
-    const t = Date.now(), spots = ad.spots.filter(s => t < s.until && dist(s, from) > s.r && dist(s, to) > s.r);
+    // Path around idle monsters: +4 per step inside their aggro radius (soft, never a wall).
+    const idle = live().filter(m => !CHASE_STATES.includes(m.state)).map(m => ({ x: m.pos.x, z: m.pos.z, r: aggroR(m.def?.kind) }));
     const heap = [[h(sx, sz), 0, sx, sz]], came = new Map([[K(sx, sz), null]]), cost = new Map([[K(sx, sz), 0]]);
     const push = e => { heap.push(e); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= e[0]) break; heap[i] = heap[p]; i = p; } heap[i] = e; };
     const pop = () => {
@@ -222,9 +293,9 @@
       }
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const nx = x + dx, nz = z + dz, nk = K(nx, nz);
-        if (solid(nx, nz) || spots.some(s => Math.hypot(nx - s.x, nz - s.z) < s.r)) continue;
+        if (solid(nx, nz)) continue;
         if (dx && dz && (solid(x + dx, z) || solid(x, z + dz))) continue;
-        const nc = c + (dx && dz ? 1.414 : 1);
+        const nc = c + (dx && dz ? 1.414 : 1) + (idle.some(s => Math.hypot(nx - s.x, nz - s.z) < s.r) ? 4 : 0);
         if (nc < (cost.get(nk) ?? Infinity)) { cost.set(nk, nc); came.set(nk, [x, z]); push([nc + h(nx, nz), nc, nx, nz]); }
       }
     }
@@ -322,11 +393,11 @@
   function candidates() {
     const me = g.sim, t = Date.now(), ms = live(), v = speed(), out = [];
     for (const n of g.nodes.list) {
-      if (!canWork(n) || !zoneOk(n) || st.black.get(n.id) > t || inDanger(n) || mobRisk(n, ms)) continue;
+      if (!canWork(n) || st.black.get(n.id) > t) continue;
       const tr = trip(me, n), sec = tr.len / v, wait = Math.max(0, (backLocal(n.id) - t) / 1000 - sec);
       if (wait > 600) continue;
-      const xp = xpOf(n) * (rich(n.id) ? 1.5 : 1), z = zoneOf(n);
-      out.push({ n, xp, sec, wait, dur: durOf(n), risk: riskSec(z.id), stone: tr.stone, zone: z.name, score: xp / (sec + wait + durOf(n) + riskSec(z.id)) });
+      const xp = xpOf(n) * (rich(n.id) ? 1.5 : 1), risk = nodeRisk(n, me, ms);
+      out.push({ n, xp, sec, wait, dur: durOf(n), risk, stone: tr.stone, zone: zoneOf(n).name, score: xp / (sec + wait + durOf(n) + risk) });
     }
     return out.sort((a, b) => b.score - a.score);
   }
@@ -356,6 +427,7 @@
     const cur = st.node && candidates().find(c => c.n.id === st.node.n.id);
     if (cur && st.node.n.id !== best.n.id && best.score < 1.25 * cur.score) return st.node;
     if (!st.node || st.node.n.id !== best.n.id) { st.req = null; st.sendAt = 0; }
+    if (!st.trip) st.trip = { z: zoneOf(best.n).id, hit: false, t0: now() };
     st.node = best;
     return best;
   }
@@ -382,29 +454,92 @@
 
   // --- Per-tick decision.
   const hitAt = new Map();
-  function attacker(me) {
-    let best = null, bd = 6;
-    for (const m of live()) {
-      const d = dist(m.pos, me);
-      if (d < bd && (ATTACK_STATES.includes(m.state) || now() - (hitAt.get(m.id) ?? -1e9) < 3000)) { bd = d; best = m; }
+  // --- Recovery. Costs in seconds of profession progress: gold at our gold rate, hp at the regen rate.
+  const BERTRAND = { x: 8.4, z: 64.6 }, POTION_TARGET = 10, POT_HEAL = 0.55; // potion: 35 % now + 20 % over 3 s, cd 1.5 s
+  const potionPrice = () => 15 + g.level * 5;
+  const goldS = () => Math.max(0.2, ad.goldS ?? 0.2); // TODO(ceiling): floor = guessed worth of idle gold, learned from income while on
+  function drink() {
+    if (!(g.potionCd > 0) && g.char.potions > 0 && now() - (st.potAt ?? -1e9) > 1500) { st.potAt = now(); st.pots = (st.pots ?? 0) + 1; g.actions.usePotion(); return true; }
+    return false;
+  }
+  // Pure: cheapest way to cover an hp deficit. cont = extra risk over the trips natural regen needs, halved (linear refill).
+  function recoverPick(o) {
+    const k = Math.max(1, o.deficit / Math.max(0.1, o.regen * o.cycleS)), heals = Math.ceil(o.deficit / (POT_HEAL * o.life));
+    const c = { cont: Math.max(0, o.riskLow - o.riskFull) * k / 2, rest: o.deficit / o.regen };
+    if (o.potions > 0 && o.deficit >= 0.45 * o.life) c.pot = 1.5 + o.price / o.goldS;
+    if (o.potions === 0 && o.gold >= o.price * 4) { const n = Math.min(POTION_TARGET, Math.floor(o.gold / o.price)); c.shop = o.shopS / n * heals + heals * o.price / o.goldS; }
+    return Object.entries(c).reduce((b, e) => e[1] < b[1] ? e : b);
+  }
+  function recoverTick(me) {
+    const deficit = g.life - g.hp;
+    if (deficit < 0.05 * g.life) { st.recover = null; return null; }
+    if (!st.recover || now() - st.recover.at > 5000) {
+      const c = st.node ?? plan(), ms = live();
+      const shopS = (trip(me, BERTRAND).len + (c ? trip(BERTRAND, c.n).len : 0)) / speed() + 8;
+      const [how, cost] = recoverPick({
+        deficit, life: g.life, regen: regen(), cycleS: c ? c.sec + c.dur : 30, potions: g.char.potions ?? 0, gold: g.char.gold ?? 0,
+        price: potionPrice(), goldS: goldS(), shopS,
+        riskLow: c ? nodeRisk(c.n, me, ms) : 0, riskFull: c ? nodeRisk(c.n, me, ms, g.life) : 0,
+      });
+      if (how === 'rest' && st.recover?.how !== 'rest') st.rests = (st.rests ?? 0) + 1;
+      st.recover = { how, cost: Math.round(cost), at: now(), hp: g.hp, t: now() };
     }
-    return best;
+    const r = st.recover;
+    if (r.how === 'cont') return null;
+    if (r.how === 'pot') { drink(); st.recover = null; return null; }
+    if (r.how === 'shop') return shopTick(me);
+    // Rest out of aggro range; learn the regen rate on the way.
+    const dt = (now() - r.t) / 1000;
+    if (dt > 8) { ad.regenN = (ad.regenN ?? 0) + 1; ad.regen = ema(ad.regen, Math.max(0.05, (g.hp - r.hp) / dt), ad.regenN); r.t = now(); r.hp = g.hp; }
+    st.phase = 'rest'; st.last = `repos (${Math.round(100 * g.hp / g.life)} % pv, ${r.cost} s)`;
+    const idle = live().filter(m => dist(m.pos, me) < aggroR(m.def?.kind) + 4);
+    if (!idle.length) return { move: [0, 0] };
+    st.restTo = pickRetreat(me, idle.map(m => m.pos), retreatCands(me), st.restTo, 1);
+    return { move: st.restTo ? travelPath(st.restTo, 'rest') : steer(me.x - idle[0].pos.x, me.z - idle[0].pos.z) };
+  }
+  // Shop (copy, potions only): walk to Bertrand, buyPotion every 600 ms up to the target or the gold.
+  function shopTick(me) {
+    st.phase = 'shop';
+    if (dist(me, BERTRAND) > 3) { st.last = 'va acheter des potions'; return { move: travel(BERTRAND, 'shop') }; }
+    if (now() - (st.buyAt ?? 0) > 600) {
+      st.buyAt = now(); st.buyTries = (st.buyTries ?? 0) + 1;
+      if (g.char.potions >= POTION_TARGET || g.char.gold < potionPrice() || st.buyTries > 14) { st.buyTries = 0; st.recover = null; st.node = null; return null; }
+      g.send({ t: 'buyPotion' }); st.shopping = true;
+    }
+    st.last = `achète des potions (${g.char.potions})`;
+    return { move: [0, 0] };
+  }
+  function fightTick(me, ms) {
+    const m = ms.reduce((b, x) => !b || dist(x.pos, me) < dist(b.pos, me) ? x : b, null), d = dist(m.pos, me);
+    if (st.phase !== 'fight') st.fights = (st.fights ?? 0) + 1;
+    st.phase = 'fight'; st.last = `combat : ${m.def?.name ?? m.def?.kind ?? '?'} niv ${m.level ?? '?'}${ms.length > 1 ? ` (+${ms.length - 1})` : ''}`;
+    return { move: d > 2.2 ? steer(m.pos.x - me.x, m.pos.z - me.z) : [0, 0], aim: m.pos, slots: ['Mouse0'] };
   }
   function decideRaw() {
     const me = g.sim, tick = now(), hpPct = g.hp / g.life;
-    if (hpPct < 0.45 && !(g.potionCd > 0) && g.char.potions > 0 && tick - (st.potAt ?? -1e9) > 1500) { st.potAt = tick; g.actions.usePotion(); }
     const gauging = !!g.gauge && !g.gauge.end;
     const esc = teleEscape(me);
     if (esc) { st.phase = 'flee'; st.last = 'esquive une attaque annoncée'; return { move: steer(...esc), roll: !(g.sim.cds?.roll > 0) && !NO_ROLL.has(CLS) }; }
     const ret = retreatTick(me);
     if (ret) { st.phase = 'flee'; return { move: ret }; }
-    // Cornered by a weak monster: hit back with the main attack (slot 0), the gauge is lost anyway.
-    const att = attacker(me);
-    if (att && !strongM(att)) {
-      st.phase = 'fight'; st.last = `se défend contre ${att.def?.kind ?? '?'} ${att.level ?? ''}`;
-      const d = dist(att.pos, me);
-      return { move: d > 2.5 ? steer(att.pos.x - me.x, att.pos.z - me.z) : [0, 0], aim: att.pos, slots: ['Mouse0'] };
-    }
+    // Threatened only if the damage expected before we are done here (gauge left, or walk + gather) eats the hp margin.
+    const th = threats(me), dpsObs = hpTrend();
+    if (th.length && !g.dungeon) {
+      tripHit();
+      if (hpPct < 0.45) drink(); // under attack a potion beats a retreat or a death
+      const c = st.node, tLeft = gauging || !c ? 0 : dist(me, c.goal ?? c.n) * ad.detour / speed();
+      const H = gauging ? Math.max(0, g.gauge.dur - (tick - g.gauge.t0) / 1000) : c ? tLeft + c.dur : 3;
+      const pred = Math.max(dpsObs * H, dmgOver(th, me, H, tLeft)), f = fight(th);
+      st.threat = { n: th.length, H: +H.toFixed(1), pred: Math.round(pred), margin: Math.round(g.hp - MARGIN * g.life), win: f.win, ttk: +f.ttk.toFixed(1) };
+      if (pred >= g.hp - MARGIN * g.life) {
+        if (f.win) return fightTick(me, th);
+        startRetreat(th, gauging ? 'récolte intenable' : `${th.length} poursuivant${th.length > 1 ? 's' : ''}`);
+        const r = retreatTick(me);
+        if (r) { st.phase = 'flee'; return { move: r }; }
+      } else if (!gauging && f.win && th.some(m => dist(m.pos, me) < reachOf(m) + 1.5)) return fightTick(me, th); // weak attacker in reach: kill it
+    } else st.threat = null;
+    // Hp deficit, nothing on us: cheapest of keep going / potion / rest / shop trip, in seconds (recover()).
+    if (!gauging && !th.length) { const r = recoverTick(me); if (r) return r; }
     if (gauging) {
       st.phase = 'gather'; st.last = `récolte ${g.gauge.what ?? ''}${g.gauge.glint ? ' (éclat)' : ''}`;
       strikeTick();
@@ -438,10 +573,11 @@
     return { move: [0, 0] };
   }
   function decide() {
+    const t = now(), me = g.sim;
+    monTick(me, Math.min(200, t - (st.decAt ?? t))); st.decAt = t;
     const d = decideRaw();
     d.move = unstick(d.move);
     // Learn the real travel speed (rolls included) over 1 s windows of route walking.
-    const t = now(), me = g.sim;
     if (!st.spd || st.phase !== 'route' || st.spd.trip !== st.wayTrips) st.spd = { x: me.x, z: me.z, at: t, trip: st.wayTrips };
     else if (t - st.spd.at > 1000) {
       const v = dist(me, st.spd) / ((t - st.spd.at) / 1000);
@@ -449,6 +585,11 @@
       st.spd = { x: me.x, z: me.z, at: t, trip: st.wayTrips };
     }
     st.prevPos = { x: me.x, z: me.z };
+    // Gold rate: positive gold changes while on (shop spending excluded), over 60 s windows.
+    const gold = g.char.gold ?? 0, gw = st.goldW ??= { at: t, sum: 0 };
+    if (st.goldPrev != null && gold > st.goldPrev) gw.sum += gold - st.goldPrev;
+    st.goldPrev = gold;
+    if (t - gw.at > 60000) { ad.goldN = (ad.goldN ?? 0) + 1; ad.goldS = ema(ad.goldS, gw.sum / ((t - gw.at) / 1000), ad.goldN); st.goldW = { at: t, sum: 0 }; }
     return d;
   }
 
@@ -465,20 +606,75 @@
     return st.botOn;
   };
 
+  // --- Coordinator: level the character with __bot (combat) until gathering at our tier is worth more.
+  // Target level per profession tier (REAPER.md priors), shifted by the measured risk share of a gather cycle.
+  const TARGET = { 1: 10, 2: 18, 3: 24, 4: 32 }, HORIZON_S = 7200, MODE_EVERY = 180000; // TODO(ceiling): fixed 2 h horizon
+  ad.tgtAdj ??= {};
+  const lvlXp = l => Math.round(110 * l ** 1.85 + 60 * l); // char xp to the next level (bundle gI, see bot.page.js)
+  const cumXp = () => { let s = g.char.ch.xp ?? 0; for (let l = 1; l < g.level; l++) s += lvlXp(l); return s; };
+  const profTier = () => Math.max(1, ...(g.char.prof?.list ?? []).filter(p => Object.values(PROF).includes(p.id)).map(p => p.lvl >= 38 ? 4 : p.lvl >= 25 ? 3 : p.lvl >= 12 ? 2 : 1));
+  const target = () => TARGET[profTier()] + (ad.tgtAdj[profTier()] ?? 0);
+  // Pure: XP when the profession xp gained over the horizon by gathering risk-free beats what leveling costs now.
+  function modePick(o) {
+    if (!o.hasBot || o.lvl >= o.target) return 'récolte';
+    const gain = (o.rateSafe - o.rateNow) * HORIZON_S, cost = o.rateNow * o.tLvlS, k = o.cur === 'XP' ? 0.8 : 1.25; // hysteresis
+    return gain > cost * k ? 'XP' : 'récolte';
+  }
+  function modeEval() {
+    const cs = candidates().slice(0, 5), best = cs[0];
+    const rateNow = best ? best.score : 0, rateSafe = Math.max(0, ...cs.map(c => c.xp / (c.sec + c.wait + c.dur)));
+    let need = 0; for (let l = g.level; l < target(); l++) need += lvlXp(l); need = Math.max(0, need - (g.char.ch.xp ?? 0));
+    const tLvlS = need / CHAR_XPS();
+    // Risk share of a cycle at or above target: too risky -> aim higher; safe below target -> aim lower.
+    if (best) {
+      const share = best.risk / (best.sec + best.wait + best.dur + best.risk), t = profTier(), a = ad.tgtAdj[t] ?? 0;
+      if (g.level >= target() && share > 0.5 && a < 6) ad.tgtAdj[t] = a + 1;
+      else if (g.level < target() && share < 0.1 && a > -4) ad.tgtAdj[t] = a - 1;
+    }
+    const mode = modePick({ hasBot: !!window.__bot, lvl: g.level, target: target(), rateNow, rateSafe, tLvlS, cur: st.mode });
+    st.modeWhy = { rateNow: +rateNow.toFixed(3), rateSafe: +rateSafe.toFixed(3), tLvlS: Math.round(tLvlS), target: target() };
+    if (mode !== st.mode) setMode(mode);
+    st.modeAt = now();
+  }
+  function setMode(mode) {
+    st.mode = mode; st.modeSwitches = (st.modeSwitches ?? 0) + 1; st.node = null; st.retreat = null; st.detour = null;
+    if (mode === 'XP') { setKeys([]); window.__botOpts = { ...(window.__botOpts ?? {}), autoTalents: true }; st.botByUs = true; try { window.__bot.start(); } catch { st.mode = 'récolte'; } }
+    else if (st.botByUs) { try { window.__bot?.pause(); } catch {} st.botByUs = false; st.botOn = false; }
+    g.ui.toast?.(`Bot métiers : mode ${st.mode}`);
+  }
+  // While leveling: take over for a cheap node close by when nothing is on us, then hand back.
+  function coordTick() {
+    if (!st.on) return;
+    if (!st.modeAt || now() - st.modeAt > MODE_EVERY) modeEval();
+    if (st.mode !== 'XP') return;
+    if (!window.__bot) { setMode('récolte'); return; }
+    const t = now(), xp = cumXp(), w = st.xpW;
+    if (!w || t - w.at > 60000) { if (w && xp >= w.xp) { ad.charN = (ad.charN ?? 0) + 1; ad.charXps = ema(ad.charXps, (xp - w.xp) / ((t - w.at) / 1000), ad.charN); } st.xpW = { at: t, xp }; }
+    const d = st.detour;
+    if (d && (t > d.until || st.lastEnd?.at > d.at || g.sim.dead)) { st.detour = null; st.node = null; try { window.__bot.start(); } catch {} return; }
+    if (d || g.sim.dead || g.hp < 0.6 * g.life || threats(g.sim).length) { if (!d && !botOn()) try { window.__bot.start(); } catch {} return; }
+    const c = candidates().find(c => c.sec < 4 && c.wait === 0 && c.risk < 3);
+    if (!c) { if (!botOn()) try { window.__bot.start(); } catch {} return; }
+    try { window.__bot.pause(); } catch {}
+    st.detour = { id: c.n.id, at: t, until: t + 20000 }; st.node = c; st.req = null; st.sendAt = 0; st.detours = (st.detours ?? 0) + 1;
+  }
+
   let alive_ = true;
   const origBuild = g.controls.build.bind(g.controls);
   const wrapper = aimPt => {
     if (!alive_ || !st.on || g.ui.typing) return origBuild(aimPt);
     try {
-      if (botOn()) { api.pause(); return origBuild(aimPt); }
+      if (st.mode === 'XP' && !st.detour) { if (st.pressed.size) setKeys([]); return origBuild(aimPt); } // __bot drives
+      if (botOn() && !st.botByUs) { api.pause(); return origBuild(aimPt); }
       if (g.sim.dead || g.hp <= 0) {
         setKeys([]);
-        if (!st.deadSince) { st.deadSince = now(); st.deaths = (st.deaths ?? 0) + 1; addRisk(g.sim, true); st.node = null; st.retreat = null; }
+        if (!st.deadSince) { st.deadSince = now(); st.deaths = (st.deaths ?? 0) + 1; tripEnd(true); st.node = null; st.retreat = null; st.revive = true; }
         if (now() - st.deadSince > 3000) { g.actions.respawn(); st.deadSince = now(); }
         st.last = 'mort';
         return origBuild(aimPt);
       }
       st.deadSince = 0;
+      if (st.revive) { st.revive = false; ad.respawn = { x: g.sim.x, z: g.sim.z }; saveAd(); } // bound stone, for the death cost
       // Hidden window (copy): ~1 fps, hold still until frames return.
       const gap = now() - (st.buildAt ?? now()); st.buildAt = now();
       st.frameGap = ema(st.frameGap ?? gap, Math.min(gap, 2000), 8);
@@ -506,7 +702,13 @@
     const t = msg?.t;
     if (t === 's') for (const ev of msg.ev ?? []) {
       if (ev.e === 'tele') addTele(ev);
-      else if (ev.e === 'hit' && ev.id === g.meId) hitAt.set(ev.s, now());
+      else if (ev.e === 'hit' && ev.id === g.meId) {
+        // Hits on us carry no source: blame the nearest monster in an attack phase.
+        const m = ev.s != null ? g.entities.monsters.get(ev.s)?.view : live().filter(x => [...ATTACK_STATES, 'recover'].includes(x.state) && dist(x.pos, g.sim) < reachOf(x) + 3)
+          .reduce((b, x) => !b || dist(x.pos, g.sim) < dist(b.pos, g.sim) ? x : b, null), k = m?.def?.kind;
+        if (m) hitAt.set(m.id, now());
+        if (k) dmgWin.dmg[k] = (dmgWin.dmg[k] ?? 0) + (ev.a ?? 0) / lvlScale(m.level);
+      }
     }
     if (t === 'gstart') {
       if (st.req) { ad.rttN = (ad.rttN ?? 0) + 1; ad.rtt = Math.min(1000, ema(ad.rtt, now() - st.req.at, ad.rttN)); st.req = null; }
@@ -523,8 +725,10 @@
       const a = ad.strike[st.strike.arm]; a.n++; if (msg.ok) a.ok++;
       st.strike = null; saveAd();
     }
+    if (t === 'death' && msg.lost != null) { const x = msg.lost + (g.char.ch.xp ?? 0); if (x > 0) { ad.lossN = (ad.lossN ?? 0) + 1; ad.lossK = ema(ad.lossK, msg.lost / x, ad.lossN); } }
     if (t === 'gend' && !msg.auto) {
       const gt = st.gather, n = gt?.n;
+      if (st.on) tripEnd(false);
       st.gather = null; st.strike = null;
       if (!msg.got) { if (n && st.on) st.black.set(n.id, Date.now() + 60000); st.fails = (st.fails ?? 0) + 1; st.lastFail = msg.m ?? null; st.node = null; return; }
       if (n) {
@@ -566,6 +770,7 @@
     + 'border:1px solid rgba(230,226,214,.25);border-radius:6px;pointer-events:none;white-space:pre-wrap';
   hud.hidden = true; // shown on start (or F11), kept out of manual play
   document.body.appendChild(hud);
+  const areaRows = () => Object.keys(ad.area).map(id => { const a = area(id); return `${id} ${a.n.toFixed(1)}/${a.a.toFixed(1)}/${a.d.toFixed(1)}`; });
   const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const perH = v => Math.round(v / Math.max(st.onMs, 60000) * 3.6e6);
   const fmtS = v => v == null ? '?' : v >= 120 ? `${Math.round(v / 60)} min` : `${Math.round(v)} s`;
@@ -580,19 +785,19 @@
     const keys = [...new Set([...Object.keys(ad.dur), ...Object.keys(ad.back)])];
     const learnRows = keys.map(k => `${k.padEnd(6)} durée ${fmtS(ad.gdur[k]?.v ?? ad.dur[k])}  repousse ${fmtS(ad.back[k]?.v)}  xp ${ad.xp[k] ? ad.xp[k].v.toFixed(1) : '?'}`).join('\n') || 'rien mesuré';
     const A = ad.strike;
-    return `<b style="color:#d9b26f">RÉCOLTE ${st.on ? 'ON' : 'OFF'}</b>  ${esc(st.phase)}  niv ${g.level}  vitesse ${speed().toFixed(2)} m/s\n`
+    return `<b style="color:#d9b26f">RÉCOLTE ${st.on ? 'ON' : 'OFF'}</b>  mode ${esc(st.mode ?? '-')}  ${esc(st.phase)}  niv ${g.level}/${target()}  vitesse ${speed().toFixed(2)} m/s\n`
       + `${esc(profs)}\n`
       + `<span style="color:#8fb3a8">cible</span>  ${esc(tgt)}\n`
       + `action : <b>${esc(st.last || '-')}</b>\n`
       + `<span style="color:#8fb3a8">mesures</span>\n${esc(learnRows)}\n`
       + `éclats : ${A.map(a => `x${a.k} ${a.ok}/${a.n}`).join('  ')}  rtt ${Math.round(ad.rtt)} ms\n`
       + `replis ${st.retreats ?? 0}  morts ${st.deaths ?? 0}  échecs ${st.fails ?? 0}  roulades ${st.rolls ?? 0}  pierres ${st.wayTrips ?? 0}\n`
-      + `dangers: ${esc(ad.spots.filter(x => Date.now() < x.until).map(x => `${x.kind} ${Math.round((x.until - Date.now()) / 1000)}s`).join(' | ') || '-')}`;
+      + `zones (visites/attaques/morts) : ${esc(areaRows().join(' | ') || '-')}`;
   }
   let tickN = 0;
   const hudTimer = setInterval(() => {
     try {
-      if (tickN++ % 4 === 0) flipTick();
+      if (tickN++ % 4 === 0) { flipTick(); coordTick(); }
       if (tickN % 120 === 0) saveAd();
       if (!hud.hidden) hud.innerHTML = hudText();
     } catch (e) { st.err = e.message; }
@@ -605,20 +810,21 @@
 
   const desc = c => c && {
     id: c.n.id, node: nodeName(c.n), tier: c.n.tier, kind: c.n.kind, rich: rich(c.n.id), zone: c.zone, at: [Math.round(c.n.x), Math.round(c.n.z)],
-    xp: +c.xp.toFixed(1), travelS: +c.sec.toFixed(1), waitS: +c.wait.toFixed(1), gatherS: c.dur, riskS: c.risk, score: +c.score.toFixed(3),
+    xp: +c.xp.toFixed(1), travelS: +c.sec.toFixed(1), waitS: +c.wait.toFixed(1), gatherS: c.dur, riskS: +c.risk.toFixed(1), score: +c.score.toFixed(3),
     stone: c.stone ? `${c.stone.src.id} -> ${c.stone.dst.id}` : null, path: c.path ? { len: Math.round(c.path.len), pts: c.path.length } : c.path === null ? 'A* échoué ou trop loin' : undefined,
   };
   const api = {
     start() {
       if (botOn()) try { window.__bot.pause(); } catch {}
       st.botOn = false; st.botAt = now();
-      st.on = true; hud.hidden = false; st.node = null; st.req = null; st.retreat = null;
+      st.on = true; hud.hidden = false; st.node = null; st.req = null; st.retreat = null; st.mode = 'récolte'; st.modeAt = 0; st.detour = null;
       Object.defineProperty(g.input, 'overUi', { get: () => false, configurable: true });
       g.ui.toast?.('Bot métiers : marche');
     },
     pause() {
       if (!st.on) return;
       st.on = false; setKeys([]); st.phase = 'idle'; st.strike = null;
+      if (st.botByUs) { try { window.__bot?.pause(); } catch {} st.botByUs = false; }
       delete g.input.overUi;
       saveAd();
       g.ui.toast?.('Bot métiers : arrêt');
@@ -644,7 +850,8 @@
       };
     },
     status: () => ({
-      on: st.on, phase: st.phase, doing: st.last, node: desc(st.node), lvl: g.level, cls: CLS,
+      on: st.on, mode: st.mode ?? null, target: target(), modeWhy: st.modeWhy ?? null, detours: st.detours ?? 0, modeSwitches: st.modeSwitches ?? 0, charXps: ad.charXps ?? null,
+      phase: st.phase, doing: st.mode === 'XP' && !st.detour ? `XP (__bot) : ${(() => { try { return window.__bot.status().doing; } catch { return '?'; } })()}` : st.last, node: desc(st.node), lvl: g.level, cls: CLS,
       profs: (g.char.prof?.list ?? []).map(p => `${p.id} ${p.lvl} (${p.xp}/${lvlNeed(p.lvl)})`),
       min: Math.round(st.onMs / 60000), stats: st.stats,
       rate: Object.fromEntries(Object.entries(st.stats).map(([k, s]) => [k, `${perH(s.n)} nœuds/h, ${perH(s.xp)} xp/h`])),
@@ -654,7 +861,11 @@
       strike: ad.strike.map(a => `x${a.k}:${a.ok}/${a.n}`), rttMs: Math.round(ad.rtt), clockOffsetMs: Math.round(ad.bf), lastGlint: st.lastGlint ?? null,
       speed: +speed().toFixed(2), detour: +ad.detour.toFixed(2), wayCost: Math.round(ad.wayCost),
       retreats: st.retreats ?? 0, deaths: st.deaths ?? 0, fails: st.fails ?? 0, lastFail: st.lastFail ?? null, rolls: st.rolls ?? 0, wayTrips: st.wayTrips ?? 0, unsticks: st.unsticks ?? 0,
-      dangers: ad.spots.filter(x => Date.now() < x.until).map(x => `${x.kind}@${x.zone} ${Math.round((x.until - Date.now()) / 1000)}s`),
+      areas: areaRows(), rests: st.rests ?? 0, regen: +regen().toFixed(2), recover: st.recover ? `${st.recover.how} ${st.recover.cost}s` : null,
+      potions: g.char.potions, gold: g.char.gold, goldS: +goldS().toFixed(3), pots: st.pots ?? 0, threat: st.threat ?? null, fights: st.fights ?? 0, chaseS: Math.round(ad.chaseS), lossK: ad.lossK ?? null,
+      aggro: Object.fromEntries(Object.entries(ad.aggro).map(([k, v]) => [k, +v.d.toFixed(1)])),
+      mspd: Object.fromEntries(Object.entries(ad.mspd).map(([k, v]) => [k, +v.v.toFixed(1)])),
+      mdps: Object.fromEntries(Object.entries(ad.mdps).map(([k, v]) => [k, `${Math.round(v.d ?? 0)}/${Math.round(v.e ?? 0)}s`])),
       pos: [Math.round(g.sim.x), Math.round(g.sim.z)], err: st.err ?? null, bot: botOn(),
     }),
   };
@@ -673,6 +884,16 @@
     let r = 0, N = 0;
     for (let w = 0; w < 40; w++) for (const n of g.nodes.list) { N++; if (hash3(n.id, g.char.id, w) < 0.12) r++; }
     if (Math.abs(r / N - 0.12) > 0.02) fail('rich rate ' + (r / N).toFixed(3));
+    // Risk: P(attacked) x [P(death) x death cost + rest x attack cost]; fight check sums dps over each lifetime.
+    if (Math.abs(riskSec(0.5, 0.1, 40, 15) - 8.75) > 1e-9 || riskSec(0, 1, 99, 99) !== 0) fail('risk formula');
+    const fc = fightCost([{ hp: 30, dps: 5 }, { hp: 10, dps: 5 }], 10, 100, 100); // kill 10 hp first: 1 s, then 4 s: 5 x 1 + 5 x 4 = 25
+    if (Math.abs(fc.taken - 25) > 1e-9 || !fc.win || fightCost([{ hp: 300, dps: 20 }], 10, 100, 100).win) fail('fight cost');
+    // Recovery: full risk cut by a potion beats a long rest; tiny deficit risk keeps going.
+    const ro = { deficit: 300, life: 600, regen: 1.5, cycleS: 20, potions: 3, gold: 100, price: 50, goldS: 1, shopS: 60, riskLow: 30, riskFull: 2 };
+    if (recoverPick(ro)[0] !== 'pot' || recoverPick({ ...ro, riskLow: 2.1 })[0] !== 'cont' || recoverPick({ ...ro, potions: 0, gold: 0, riskLow: 60 })[0] !== 'rest') fail('recover pick');
+    // Mode: big risk-free gain over the horizon -> XP; at target or without __bot -> récolte; hysteresis keeps XP.
+    const mo = { hasBot: true, lvl: 5, target: 10, rateNow: 0.2, rateSafe: 1, tLvlS: 3600, cur: 'récolte' };
+    if (modePick(mo) !== 'XP' || modePick({ ...mo, hasBot: false }) !== 'récolte' || modePick({ ...mo, lvl: 10 }) !== 'récolte' || modePick({ ...mo, rateNow: 0.95 }) !== 'récolte') fail('mode pick');
     // Approach cell: free and within gather reach (2.8 m) of its node.
     const n0 = g.nodes.list[0], ap = approach(n0, { x: n0.x + 20, z: n0.z });
     if (solid(ap.x, ap.z) && dist(ap, n0) > 0.1) fail('approach solid');
