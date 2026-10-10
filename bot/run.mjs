@@ -66,6 +66,6 @@ for (;;) {
   if (fights.length) fs.appendFileSync(new URL('./fights.jsonl', import.meta.url), fights.map(f => JSON.stringify(f)).join('\n') + '\n');
   // Event journal (action, goal, zone, dungeon phase, level, death changes) for later review.
   const jr = await page.evaluate(() => window.__bot?.drainJournal?.() ?? []).catch(() => []);
-  if (jr.length) fs.appendFileSync(new URL('./journal.jsonl', import.meta.url), jr.map(f => JSON.stringify(f)).join('\n') + '\n');
+  if (jr.length) fs.appendFileSync(new URL(`./journal${injectedFor ? '-' + injectedFor : ''}.jsonl`, import.meta.url), jr.map(f => JSON.stringify(f)).join('\n') + '\n');
   await sleep(10000);
 }

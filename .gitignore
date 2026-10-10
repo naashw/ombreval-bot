@@ -3,4 +3,4 @@ js/
 *.log
 bot/fights.jsonl
 bot/home.json
-bot/journal.jsonl
+bot/journal*.jsonl
