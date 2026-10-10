@@ -8,8 +8,12 @@ const PORT = process.env.CDP_PORT ?? 9222;
 
 const cmd = process.argv[2] ?? 'load';
 const browser = await chromium.connectOverCDP(`http://localhost:${PORT}`);
-const page = browser.contexts().flatMap(c => c.pages()).find(p => p.url().includes('ombreval'));
-if (!page) { console.error(`Onglet Ombreval introuvable dans Brave (port ${PORT})`); process.exit(1); }
+// Several game tabs (e.g. a private window on another account): CHAR=<character name> picks the tab playing it.
+const tabs = browser.contexts().flatMap(c => c.pages()).filter(p => p.url().includes('ombreval'));
+const nameOf = p => p.evaluate(() => window.__game?.char?.name ?? null).catch(() => null);
+let page = process.env.CHAR ? null : tabs[0];
+for (const t of process.env.CHAR ? tabs : []) if (await nameOf(t) === process.env.CHAR) { page = t; break; }
+if (!page) { console.error(`Onglet Ombreval${process.env.CHAR ? ' de ' + process.env.CHAR : ''} introuvable dans Brave (port ${PORT}) ; onglets : ${(await Promise.all(tabs.map(nameOf))).join(', ')}`); process.exit(1); }
 
 if (cmd === 'stop' || cmd === 'status') {
   console.log(await page.evaluate(c => window.__gather ? (c === 'stop' ? (window.__gather.stop(), 'arrêté') : window.__gather.status()) : 'bot métiers non chargé', cmd));
