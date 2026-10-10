@@ -1872,6 +1872,30 @@
   }
   // Follow a path to goal; recompute when goal changes or no progress for 2 s.
   // One path cache per caller (key), so alternating callers never recompute each other's path.
+  // Distance from p to segment ab, and a wall-free straight line from a to b (0.5 m steps).
+  const segDist = (p, a, b) => { const vx = b.x - a.x, vz = b.z - a.z, l2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l2)); return Math.hypot(p.x - a.x - vx * t, p.z - a.z - vz * t); };
+  const clearLine = (a, b) => { const n = Math.ceil(dist(a, b) / 0.5); for (let k = 1; k <= n; k++) if (solid(a.x + (b.x - a.x) * k / n, a.z + (b.z - a.z) * k / n)) return false; return true; };
+  console.assert(segDist({ x: 1, z: 1 }, { x: 0, z: 0 }, { x: 2, z: 0 }) === 1 && segDist({ x: 3, z: 0 }, { x: 0, z: 0 }, { x: 2, z: 0 }) === 1, 'segDist');
+  // Waypoint to walk to, never one behind us (shared by every path follower through travelPath): after a jump (reaper
+  // roll/rush, knockback) or a corner cut, project onto the next segments and take the end of the closest one reached
+  // when it is in line of sight; then skip any waypoint lying behind us along its outgoing segment.
+  function aheadIdx(pts, i, me, los) {
+    let bk = -1, bd = Infinity;
+    for (let k = Math.max(0, i - 1); k < Math.min(pts.length - 1, i + 12); k++) {
+      const d = segDist(me, pts[k], pts[k + 1]);
+      if (d < bd) { bd = d; bk = k; }
+    }
+    if (bk + 1 > i && bd < 3 && los(me, pts[bk + 1])) i = bk + 1;
+    const behind = k => (pts[k].x - me.x) * (pts[k + 1].x - pts[k].x) + (pts[k].z - me.z) * (pts[k + 1].z - pts[k].z) < 0;
+    while (i < pts.length - 1 && behind(i) && los(me, pts[i + 1])) i++;
+    return i;
+  }
+  (() => {
+    const P = [0, 3, 6, 9, 12].map(x => ({ x, z: 0 })), yes = () => true;
+    if (aheadIdx(P, 1, { x: 8, z: 0.5 }, yes) !== 3) console.warn('bot self-check failed: aheadIdx after a jump');
+    if (aheadIdx(P, 1, { x: 1, z: 0 }, yes) !== 1) console.warn('bot self-check failed: aheadIdx keeps the next waypoint');
+    if (aheadIdx(P, 1, { x: 8, z: 0.5 }, () => false) !== 1) console.warn('bot self-check failed: aheadIdx needs line of sight');
+  })();
   function travelPath(goal, key = 'goal') {
     const me = g.sim, navs = st.navs ??= {};
     st.trav = { goal, key, n: st.tickN };
@@ -1884,6 +1908,7 @@
     }
     const p = navs[key];
     while (p.i < p.pts.length - 1 && dist(me, p.pts[p.i]) < 1.5) p.i++;
+    if (!p.failed) p.i = aheadIdx(p.pts, p.i, me, clearLine);
     const wp = p.pts[p.i], d = dist(me, wp);
     if (d < p.best - 0.3 || p.i > (p.lastI ?? -1)) { p.best = d; p.lastI = p.i; p.progressAt = now(); }
     return p.failed ? steer(wp.x - me.x, wp.z - me.z) : [(wp.x - me.x) / (d || 1), (wp.z - me.z) / (d || 1)];
