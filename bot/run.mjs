@@ -34,6 +34,9 @@ async function inject() {
     try { console.log(await page.evaluate(fs.readFileSync(new URL('./viz.page.js', import.meta.url), 'utf8'))); }
     catch (e) { console.log('viz non chargée :', e.message.split('\n')[0]); }
   }
+  // Gathering bot (paused) so the panel's "Bot métiers" entry works after a reload too.
+  try { console.log(await page.evaluate(fs.readFileSync(new URL('./gather.page.js', import.meta.url), 'utf8'))); }
+  catch (e) { console.log('gather non chargé :', e.message.split('\n')[0]); }
   try { console.log(await page.evaluate(fs.readFileSync(new URL('./assist.page.js', import.meta.url), 'utf8'))); }
   catch (e) { console.log('assist non chargé :', e.message.split('\n')[0]); }
   if (cmd === 'start') await page.evaluate(() => window.__bot.start());

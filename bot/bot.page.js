@@ -814,7 +814,7 @@
     const ch = g.char.ch, tree = ch.tree ?? {};
     const spent = Object.values(tree).reduce((a, n) => a + n, 0);
     const next = BUILD.talents[spent];
-    if (window.__botOpts?.autoTalents !== false && spent < ch.level && next && next.level <= ch.level) { g.actions.learnTalent(next.id); st.lastTalent = next.id; return; }
+    if (window.__botOpts?.autoTalents === true && spent < ch.level && next && next.level <= ch.level) { g.actions.learnTalent(next.id); st.lastTalent = next.id; return; }
     if (ch.unspent > 0) {
       const rule = BUILD.attributes.find(r => ch.level >= r.from && ch.level <= r.to) ?? BUILD.attributes.at(-1);
       // Spend toward the split ratio: the attribute furthest below its share gets the point.
