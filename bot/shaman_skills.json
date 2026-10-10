@@ -1,0 +1,414 @@
+{
+  "assumptions": {
+    "level": 12,
+    "aps": 1.2,
+    "apsNote": "totem 1.2 / antlerstaff 1.2 / hatchet 1.1 ; howl (wolf entry breath or primalcall in wolf) x1.3 on click cast speed for 6 s (Qre)",
+    "castFormula": "spiritclaws 0.72/p, crows 0.7/p, bite 0.42/p, swipe 0.95/p, tusks 1.0/p, pounce 0.55/sqrt(p), maul 0.9/sqrt(p), p = aps x (1.3 si hurlement) ; formes 0.35, totem 0.6, meute 0.75, sanglier 0.55, écorce 0.5, mammouth 0.9, appel 0.65, Charge du mammouth 0.45 (cd 3)",
+    "talentsAt12": {
+      "wolfform": 1,
+      "sh_claws": 2,
+      "sh_circle": 2,
+      "bearform": 1,
+      "sh_dodge": 2,
+      "ancestortotem": 1,
+      "sh_crows": 1,
+      "sh_fang": 2
+    },
+    "essencePerHit": {
+      "resource": "Esprit (g.sim.fury), max 100, gains x furyGen (1.1 base, +5 %/pt sh_trance) ; aucune régénération ni perte hors combat côté client",
+      "spiritclaws": 7,
+      "crowsPerPeck": 1,
+      "humanBreath": 15,
+      "totemMult": 1.5,
+      "beastBurnPerSec": 3,
+      "beastEnterMin": 5,
+      "sh_grove": "gains x1.5, brûlure x1.5",
+      "hurt": 0,
+      "serverSide": "gains éventuels des coups de bête : côté serveur, non vérifiés"
+    },
+    "circle": {
+      "name": "Cercle des bêtes",
+      "every": 3,
+      "everyOathElders": 1.5,
+      "rule": "changer de forme quand comboTimer <= 0 libère le souffle de la NOUVELLE forme et relance comboTimer (3 s) ; homme : soin 6 % (10 % avec sh_circle R2) + 15 Esprit ; loup : hurlement (+30 % aps 6 s, 5 doses de saignement à 5 m) ; ours : rugissement 300 % à 5 m, étourdit 1,5 s, bouclier 20 % vie 6 s (recharge 10 s). Mammouth : pas de souffle"
+    },
+    "harmony": {
+      "window": 15,
+      "windowSh_circle": 20,
+      "tiers": "formes distinctes prises dans la fenêtre : I/II/III = +8/16/25 % dégâts et 5/10/15 % dégâts subis en moins ; sh_oath_elders : III = +35 %",
+      "weave": "cycle de 12 s : loup (hurlement) -> homme (soin) -> ours (rugissement) -> homme (soin), un changement toutes les 3 s, 4 x 0,35 s de cast ; tient Harmonie III en permanence"
+    },
+    "dmgUnit": "% de Puissance (yF power), cible unique, hors critiques ; dmgPct inclut les talents du niveau 12",
+    "talentRows": "rangées aux niveaux [1,3,6,10,14,19,24,30,36,43,50] ; rang N d'une active = niveau de rangée + 7 x (N-1), ultime + 8 ; passifs et stats : tous rangs dès la rangée ; groupes exclusifs : c (ancestortotem | spiritpack), d (boarcharge | barkskin), k (sh_alpha | sh_grove | sh_stone), s (sh_oath_wolf | sh_oath_bear | sh_oath_elders) ; 1 point par niveau ; aucun prérequis"
+  },
+  "skills": {
+    "spiritclaws": {
+      "dmgPct": 108,
+      "splashPct": 108,
+      "radius": 0.9,
+      "range": 12,
+      "castSec": 0.6,
+      "cd": 0,
+      "cost": 0,
+      "essenceGain": "+7 Esprit par lancer qui touche (qm.claws), x furyGen 1.1 = 7,7 ; +2 avec sh_rake R1",
+      "dpsPerCastSec": 180,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "line",
+        "len": 3,
+        "halfWidth": 0.9,
+        "at": "cursor"
+      },
+      "utility": "LMB humain : trois griffes en ligne de 3 m sous le curseur (12 m). Cast = 0,72/aps (0,72/(aps x 1,3) sous hurlement du loup). Sous une forme de bête, ce slot lance le coup de la bête (bite/swipe/tusks)",
+      "useWhen": "remplissage : aucune autre règle ; viser la ligne de 3 m qui couvre le plus de monstres à 12 m (orienter la ligne de soi vers la cible, centre au curseur)",
+      "rankScaling": {
+        "base": "90 %",
+        "sh_claws R1 (3)": "+20 % tous clics gauches -> 108 %",
+        "sh_claws R2 (3)": "sillon ralentit 1,5 s ; coups de bête +0,5 m",
+        "sh_rake R1 (30)": "+15 %, +2 Esprit",
+        "sh_rake R2 (30)": "1 clic gauche sur 4 x2 (+25 % moyen)",
+        "sh_grove (24)": "+30 % (sort de forme humaine, hypothèse : les clics humains comptent)"
+      }
+    },
+    "crows": {
+      "dmgPct": 144,
+      "splashPct": 144,
+      "radius": 3,
+      "range": 12,
+      "castSec": 0.58,
+      "cd": 0,
+      "cost": 0,
+      "essenceGain": "+1 Esprit par coup de bec qui touche (6 impulsions x cibles), x1,1",
+      "dpsPerCastSec": 248.28,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "duration": 3,
+      "tickSec": 0.5,
+      "tickPct": 24,
+      "utility": "RMB humain : nuée au curseur (12 m), 3 m de rayon, 6 impulsions de 24 % en 3 s (144 % par cible), les monstres dedans ratent 30 % de leurs coups. UNE seule nuée : relancer remplace la précédente. Cast = 0,7/aps",
+      "useWhen": "aucune nuée active (lancée il y a plus de 3 s, 4,5 s avec sh_murder) OU plus aucun monstre dans les 3 m de la nuée active ; et 1+ monstre à 12 m ; viser bestAoe(12, 3)",
+      "rankScaling": {
+        "base": "20 %/0,5 s x 6 = 120 %",
+        "sh_crows R1 (6)": "+20 % clics droits -> 144 %",
+        "sh_murder R1 (43)": "dure 4,5 s -> 216 %",
+        "sh_murder R2 (43)": "+120 % au dernier piqué, étourdit 0,5 s les aveuglés",
+        "sh_grove (24)": "+30 % (hypothèse)"
+      }
+    },
+    "wolfform": {
+      "dmgPct": 150,
+      "splashPct": 150,
+      "radius": 5,
+      "range": 0,
+      "castSec": 0.35,
+      "cd": 1.5,
+      "cost": 0,
+      "essenceGain": "entrer demande 5 Esprit puis brûle 3/s (4,5/s avec sh_grove ; 0 au pied du totem) ; à sec retour forcé en homme",
+      "dpsPerCastSec": 428.57,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "BASCULE (presser de nouveau = homme). Entrée avec souffle prêt (comboTimer <= 0) : hurlement, 5 doses de saignement (5 x 30 % en 4 s = 150 %) aux monstres à 5 m, +30 % vitesse d'attaque 6 s (accélère aussi griffes et nuée une fois redevenu homme). Loup : +30 % déplacement, LMB Morsure 72 % (bond 2 m, cast 0,42/aps), RMB Curée 264 % (+50 % sur cible qui saigne, hypothèse additive) coût 15 avec sh_crows",
+      "useWhen": "tissage : forme humaine, comboTimer <= 0, Esprit >= 15, 2+ monstres à 5 m, et rugissement de l'ours en recharge (sinon l'ours d'abord) ; rester loup jusqu'à comboTimer <= 0 (3 s) puis repasser homme",
+      "rankScaling": {
+        "R1 (1)": "forme",
+        "R2 (8)": "Traque : Curée 9 m, étourdit 2 s",
+        "R3 (15)": "Meute de sang : +8 Esprit par mort en saignant, la plaie saute à 5 m (non pris)"
+      }
+    },
+    "bearform": {
+      "dmgPct": 300,
+      "splashPct": 300,
+      "radius": 5,
+      "range": 0,
+      "castSec": 0.35,
+      "cd": 1.5,
+      "cost": 0,
+      "essenceGain": "comme wolfform : 5 pour entrer, 3/s brûlés",
+      "dpsPerCastSec": 857.14,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "roarCd": 10,
+      "utility": "BASCULE. Entrée avec souffle prêt : rugissement 300 % à 5 m, repousse, étourdit 1,5 s, bouclier 20 % de la vie 6 s (rugissement au plus toutes les 10 s). Ours : -8 % dégâts subis, +20 % vie, inébranlable ; LMB Coup de patte 156 % arc 140° 2,6 m (cast 0,95/aps), RMB Écrasement 288 % à 3 m étourdit 0,8 s coût 20 (15 avec sh_crows)",
+      "useWhen": "défense : forme humaine, comboTimer <= 0, Esprit >= 10, rugissement prêt (10 s depuis la dernière entrée avec souffle) et (2+ monstres à 5 m OU PV < 50 % avec un attaquant au contact) ; puis homme dès comboTimer <= 0 (soin 10 % + 15 Esprit)",
+      "rankScaling": {
+        "R1 (6)": "forme",
+        "R2 (13)": "Hibernation : 1,5 % vie/s en ours (non pris)",
+        "R3 (20)": "Ours des cavernes : Écrasement attire à 7 m (non pris)"
+      }
+    },
+    "ancestortotem": {
+      "dmgPct": 900,
+      "splashPct": 900,
+      "radius": 8,
+      "range": 12,
+      "castSec": 0.6,
+      "cd": 20,
+      "cost": 0,
+      "essenceGain": "x1,5 Esprit gagné au pied du totem, les bêtes n'y brûlent plus",
+      "dpsPerCastSec": 1500,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "duration": 12,
+      "tickSec": 2,
+      "tickPct": 150,
+      "utility": "totem au curseur 12 s : bat toutes les 2 s, 150 % à chaque monstre à 8 m (6 battements = 900 %) ; héros à 8 m : 1,5 % vie/s",
+      "useWhen": "prêt && (2+ monstres à 8 m du point visé || élite/boss) ; viser le centre de la meute (12 m max). Ensuite rester à 6-8 m du totem (soin) en kitant autour",
+      "rankScaling": {
+        "R1 (10)": "900 % par cible",
+        "R2 (17)": "Totem hurleur : attire tout à 8 m à son pied, étourdit 2,5 s, battements ralentissent 3 s",
+        "R3 (24)": "Aigle : +100 % par battement sur le plus proche (+600 % mono)"
+      }
+    },
+    "boarcharge": {
+      "dmgPct": 400,
+      "splashPct": 400,
+      "radius": 1.2,
+      "range": 16,
+      "castSec": 0.55,
+      "cd": 12,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 727.27,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "line",
+        "len": 16,
+        "halfWidth": 1.2,
+        "from": "self"
+      },
+      "utility": "sanglier-esprit de soi au curseur (16 m) : 400 % à tout ce qu'il percute, étourdit 2,5 s, emporte les monstres jusqu'au bout (pas seigneurs ni champions)",
+      "useWhen": "prêt && (2+ monstres sur la ligne de 16 m || élite || attaquant au contact et PV < 60 %) ; viser au-delà du groupe vers le totem ou la nuée pour regrouper",
+      "rankScaling": {
+        "R1 (14)": "400 %, étourdit 2,5 s",
+        "R2 (21)": "exposé +15 % 4 s + saignement",
+        "R3 (28)": "revient jusqu'à vous (150 %) et ramène la meute à vos pieds (non pris : mauvais pour le kite)"
+      }
+    },
+    "mammoth": {
+      "dmgPct": 800,
+      "splashPct": 800,
+      "radius": 7,
+      "range": 0,
+      "castSec": 0.9,
+      "cd": 90,
+      "cost": 0,
+      "essenceGain": "l'Esprit ne brûle pas",
+      "dpsPerCastSec": 888.89,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "duration": 15,
+      "utility": "ultime 15 s : barrit 800 % à 7 m (renversés 2,5 s), -40 % dégâts subis, inébranlable, Harmonie III ; pas qui tremblent 80 % à 3,5 m toutes les 0,6 s ; LMB Coup de défenses 360 % arc 160° 3,6 m (cast 1/aps), RMB Charge 500 % sur 10 m étourdit 2 s (recharge 3 s)",
+      "useWhen": "prêt && (4+ monstres à 7 m || élite/boss à 7 m || PV < 35 % avec 2+ attaquants) ; pendant la forme : coller la meute, LMB au centre, RMB dès prête",
+      "rankScaling": {
+        "R1 (19)": "15 s, renverse 2,5 s",
+        "R2 (27)": "18 s, renverse 4 s"
+      }
+    },
+    "primalcall": {
+      "dmgPct": 600,
+      "splashPct": 600,
+      "radius": 3,
+      "range": 14,
+      "castSec": 0.65,
+      "cd": 14,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 923.08,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "homme : aigle 600 % à 3 m au curseur (14 m), étourdit 2,5 s, expose +30 % 6 s. Loup : hurlement (vitesse), peur 2,5 s à 8 m, saignements ouverts d'un coup +400 %. Ours/mammouth : défi, attire à 8 m, provoque 4 s, -8 % dégâts subis par monstre (40 % max)",
+      "useWhen": "forme humaine && prêt && (2+ monstres dans 3 m du point || élite) ; lancer AVANT totem/nuée sur le même groupe (exposé +30 %)",
+      "rankScaling": {
+        "R1 (36)": "aigle",
+        "R2 (43)": "Écho primal : déclenche aussi le souffle du Cercle",
+        "R3 (50)": "2 charges (non pris, conflit avec sh_oath_elders)"
+      }
+    },
+    "roll": {
+      "dmgPct": 0,
+      "splashPct": 0,
+      "radius": 3,
+      "range": 7,
+      "castSec": 0.45,
+      "cd": 4,
+      "cost": 0,
+      "essenceGain": "+8 avec sh_wings R2 (non pris)",
+      "dpsPerCastSec": 0,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "Envol du corbeau : 7 m vers la direction tenue, invulnérable 0,45 s, annule toute action",
+      "useWhen": "attaque annoncée ou PV < 40 % avec attaquant au contact et ours indisponible ; 2 charges avec sh_dodge R1, retombée : 30 % d'esquive à 3 m 2 s (R2)",
+      "rankScaling": {
+        "sh_dodge R1 (6)": "2 charges",
+        "sh_dodge R2 (6)": "plumes : -30 % précision ennemie à 3 m, 2 s",
+        "sh_wings R1/R2 (36)": "60 % aux survolés / +8 Esprit (non pris)"
+      }
+    },
+    "spiritpack": {
+      "dmgPct": 60,
+      "splashPct": 0,
+      "radius": 6,
+      "range": 0,
+      "castSec": 0.75,
+      "cd": 24,
+      "cost": 0,
+      "essenceGain": "+8 par kill avec R3",
+      "dpsPerCastSec": null,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "choix exclusif du totem (groupe c) : 3 loups 15 s, 60 % par morsure toutes les 1,2 s (150 %/s mono), peur 2,5 s à 6 m",
+      "useWhen": "non pris (totem : 900 % par cible en zone + soin + regroupement)",
+      "rankScaling": {
+        "R2 (17)": "2 doses de saignement",
+        "R3 (24)": "+8 Esprit par kill, +2 s"
+      }
+    },
+    "barkskin": {
+      "dmgPct": 600,
+      "splashPct": 600,
+      "radius": 4,
+      "range": 0,
+      "castSec": 0.5,
+      "cd": 20,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": null,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "choix exclusif du sanglier (groupe d) : racines 2,5 s à 5 m, 8 s à -50 % dégâts subis, épines 80 % au contact ; R2 éclat 600 % à 4 m à la fin",
+      "useWhen": "non pris ; à prendre à la place du sanglier si le bot meurt plus d'une fois par heure (oubli requis)",
+      "rankScaling": {
+        "R2 (21)": "éclat 600 % r4",
+        "R3 (28)": "bêtes ne brûlent plus l'Esprit"
+      }
+    }
+  },
+  "essence": {
+    "valuePerPoint": 0,
+    "valueNote": "build humain : aucun sort humain ne coûte d'Esprit (griffes en rendent 7,7 par lancer, environ 13/s). L'Esprit ne sert qu'à entrer et rester en bête (5 + 3/s) et à Curée/Écrasement, que le build n'utilise pas",
+    "reserveRule": 20,
+    "income": "griffes seules 12,8 Esprit/s à aps 1,2 ; +15 par souffle humain ; plein (100) en moins de 10 s de combat"
+  },
+  "bestByCluster": {
+    "N1": {
+      "dmgPerCastSec": {
+        "spiritclaws": 180,
+        "crows": 248.28,
+        "ancestortotem": 1500,
+        "boarcharge": 727.27,
+        "bearform_roar": 857.14,
+        "wolfform_howl": 428.57,
+        "mammoth_trumpet": 888.89,
+        "primalcall_eagle": 923.08
+      },
+      "bestSpammable": "crows (une nuée à la fois), puis spiritclaws",
+      "bestOverall": "ancestortotem",
+      "bestPerEssence": "sans objet : aucun sort humain ne coûte d'Esprit ; l'Esprit ne sert qu'aux bascules de forme"
+    },
+    "N2": {
+      "dmgPerCastSec": {
+        "spiritclaws": 270,
+        "crows": 496.55,
+        "ancestortotem": 3000,
+        "boarcharge": 1454.55,
+        "bearform_roar": 1714.29,
+        "wolfform_howl": 857.14,
+        "mammoth_trumpet": 1777.78,
+        "primalcall_eagle": 1846.15
+      },
+      "bestSpammable": "crows, puis spiritclaws",
+      "bestOverall": "ancestortotem",
+      "bestPerEssence": "sans objet : aucun sort humain ne coûte d'Esprit ; l'Esprit ne sert qu'aux bascules de forme"
+    },
+    "N3": {
+      "dmgPerCastSec": {
+        "spiritclaws": 360,
+        "crows": 744.83,
+        "ancestortotem": 4500,
+        "boarcharge": 2181.82,
+        "bearform_roar": 2571.43,
+        "wolfform_howl": 1285.71,
+        "mammoth_trumpet": 2666.67,
+        "primalcall_eagle": 2769.23
+      },
+      "bestSpammable": "crows, puis spiritclaws",
+      "bestOverall": "ancestortotem",
+      "bestPerEssence": "sans objet : aucun sort humain ne coûte d'Esprit ; l'Esprit ne sert qu'aux bascules de forme"
+    },
+    "N5": {
+      "dmgPerCastSec": {
+        "spiritclaws": 450,
+        "crows": 1241.38,
+        "ancestortotem": 7500,
+        "boarcharge": 3636.36,
+        "bearform_roar": 4285.71,
+        "wolfform_howl": 2142.86,
+        "mammoth_trumpet": 4444.44,
+        "primalcall_eagle": 4615.38
+      },
+      "bestSpammable": "crows, puis spiritclaws",
+      "bestOverall": "ancestortotem",
+      "bestPerEssence": "sans objet : aucun sort humain ne coûte d'Esprit ; l'Esprit ne sert qu'aux bascules de forme"
+    },
+    "assumptions": "N monstres groupés à 1,8 m ; griffes touchent 1 / 1,5 / 2 / 2,5 cibles (ligne 3 x 1,8 m) ; rangs du niveau 12 (sh_claws 2, sh_crows 1) ; aps 1,2 (Bâton totémique)",
+    "reading": "Par seconde de cast : totem (1500 %/cible, recharge 20 s) > aigle 923 > mammouth 889 > rugissement 857 > sanglier 727 > hurlement 429 > nuée 247 > griffes 180 par cible. Les sorts à recharge partent dès que leur condition est remplie ; la nuée bat les griffes à chaque N mais une seule à la fois, donc nuée tenue en permanence et griffes en remplissage. DPS soutenu niveau 12, meute de 3 : nuée 144 + griffes 0,75 x 180 x 2 = 270 + totem 135 = environ 550 % de Puissance par seconde (environ 230 dégâts/s à P 42)."
+  },
+  "gear": {
+    "formula": {
+      "power": "(0.04*lvlBase + sum item pow*(1+UPG[up]/100)) * (1+powPct/100) * frame.dmg ; lvlBase = 100+(20*lvl)^1.2 ; shaman frame dmg 0.98 life 0.94 guard 5 (bundle Yd.shaman.frame, vérifié en jeu : niv 12, pow 10 -> 41.87)",
+      "life": "(lvlBase + sum item hp*(1+UPG[up]/100)) * (1+lifePct/100) * frame.life (vérifié : 858 au niv 12 avec hp 95)",
+      "affixes": "flat % points, x(1+UPG[up]/200) plafonné au max légendaire ; UPG = [0,4,8,12,17,22,28,35,43,52,62] ; caps crit 60 (base 5), critDmg +250 (base 50), guard 60, pen 50, execute 75, leech 25, tenacity 75, haste 50, cdr 50, moveSpd 45",
+      "hit": "power * (1 + crit/100*critDmg/100) * execF ; execF = 1 + 0.35*execute/100 (ASSUMPTION: 35% of damage under 35% hp)",
+      "aps": "fixe par base : totem 1.2, antlerstaff 1.2 (Vh écrase le 0.9 de la table d'objets), hatchet 1.1 ; griffes 0.72/aps et nuée 0.7/aps (x1.3 sous hurlement) ; la Hâte ne touche que les sorts non-clics de durée <= 1.5 s (formes 0.35, totem 0.6, sanglier 0.55, appel 0.65, mammouth 0.9)",
+      "dpsIndex": "dps = hit*(0.75*clickPct/clickSec + 48 + 78/(1-cdr))/100 ; clickPct = 108 et clickSec = 0.72/aps avec le Bâton totémique (classique) ; 48 = nuée 144 %/3 s ; 78 = totem 900/20 + sanglier 400/12 (%/s par cible). Arme non classique : clickPct = coef x 90 (LMB) et clickSec = 1/aps, et la nuée disparaît (le RMB d'arme vaut coef x 20 % seulement) : terme 48 remplacé par 0",
+      "ehp": "life/(1-guard/100) + leech/100*dps*5 (ASSUMPTION: 5 s of leech)",
+      "score": "dps * sqrt(ehp) -> compare items by swapping them into the full stat sheet; higher wins",
+      "note": "alloc attributes no longer feed stats (yF ignores ch.alloc) ; sous une forme de bête les clics ne sont jamais ceux de l'arme (CF ne s'applique qu'en forme 0)"
+    },
+    "weaponBases": {
+      "totem": {
+        "aps": 1.2
+      },
+      "antlerstaff": {
+        "aps": 1.2
+      },
+      "hatchet": {
+        "aps": 1.1
+      },
+      "rule": "bases cls shaman seulement ; préférer totem (classique : vraies Griffes et Nuée, talents compris). antlerstaff ou hatchet : seulement si leur pow dépasse celui du meilleur totem de 60 % ou plus (perte de la nuée : environ 35 % de nos dégâts)"
+    }
+  },
+  "talentPlanReview": {
+    "verdict": "Plan cohérent avec l'arbre actuel du perso (9 points identiques, même ordre possible). Lanceur humain + tissage des formes : sûr (nuée -30 % précision, sillon ralentissant, totem étourdissant, sanglier étourdissant, bouclier de l'ours, 2 Envols) pour peu de perte face à un loup au contact.",
+    "swaps": [
+      {
+        "level": 14,
+        "from": "boarcharge",
+        "to": "barkskin",
+        "why": "si le bot meurt plus d'une fois par heure : -50 % dégâts subis 8 s sur 20, racines 2,5 s ; perd le regroupement et 400 % par cible"
+      },
+      {
+        "level": 24,
+        "from": "sh_grove",
+        "to": "sh_stone",
+        "why": "si le tissage ne marche pas en pratique et que le bot tank en ours : -25 % dégâts subis en ours, +2 Esprit par coup reçu"
+      },
+      {
+        "level": 50,
+        "from": "sh_oath_elders",
+        "to": "primalcall R3",
+        "why": "si le bot ne tisse pas les formes : 2 charges d'aigle valent plus que le souffle accéléré"
+      }
+    ],
+    "keep": "ancestortotem R2@17 (attire + étourdit), mammoth@19 et R2@27, sh_grove@24, sh_rake@30-31, primalcall@36"
+  },
+  "potion": {
+    "instantPct": 35,
+    "hotPct": 20,
+    "hotSec": 3,
+    "cdSec": 1.5,
+    "source": "client potion tooltip index.pretty.js L93399: Rend 35 % de la vie instantanément puis 20 % en 3 s, recharge 1,5 s"
+  }
+}

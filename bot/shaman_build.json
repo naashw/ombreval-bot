@@ -1,0 +1,344 @@
+{
+  "talents": [
+    {
+      "level": 1,
+      "id": "wolfform",
+      "why": "Forme du loup : hurlement du Cercle (saignement 150 % à 5 m, +30 % vitesse des clics 6 s), 1er palier d'Harmonie"
+    },
+    {
+      "level": 3,
+      "id": "sh_claws",
+      "why": "Griffes profondes I : +20 % aux clics gauches (Griffes d'esprit = 75 % de nos coups)"
+    },
+    {
+      "level": 3,
+      "id": "sh_claws",
+      "why": "Griffes profondes II : le sillon ralentit 1,5 s, kite gratuit"
+    },
+    {
+      "level": 4,
+      "id": "sh_circle",
+      "why": "Mémoire des bêtes I : Harmonie retenue 20 s au lieu de 15, Harmonie III tenable en tissant"
+    },
+    {
+      "level": 5,
+      "id": "sh_circle",
+      "why": "Mémoire des bêtes II : souffle humain soigne 10 % au lieu de 6 % (toutes les 6 s en tissage)"
+    },
+    {
+      "level": 6,
+      "id": "bearform",
+      "why": "Forme de l'ours : rugissement 300 % à 5 m, étourdit 1,5 s, bouclier 20 % vie (recharge 10 s)"
+    },
+    {
+      "level": 7,
+      "id": "sh_dodge",
+      "why": "Plumes de corbeau I : 2e charge d'Envol (évasion 7 m invulnérable)"
+    },
+    {
+      "level": 8,
+      "id": "sh_dodge",
+      "why": "Plumes de corbeau II : en retombant, 30 % d'esquive aux monstres à 3 m pendant 2 s"
+    },
+    {
+      "level": 10,
+      "id": "ancestortotem",
+      "why": "Totem des ancêtres : 6 battements x 150 % à 8 m (900 % par cible / 20 s), soin 1,5 %/s"
+    },
+    {
+      "level": 10,
+      "id": "sh_crows",
+      "why": "Nuée noire I : +20 % aux clics droits (Nuée de corbeaux 144 % par cible et par lancer)"
+    },
+    {
+      "level": 11,
+      "id": "sh_fang",
+      "why": "+4 % Puissance"
+    },
+    {
+      "level": 12,
+      "id": "sh_fang",
+      "why": "+8 % Puissance"
+    },
+    {
+      "level": 13,
+      "id": "sh_fang",
+      "why": "+12 % Puissance"
+    },
+    {
+      "level": 14,
+      "id": "boarcharge",
+      "why": "Charge du sanglier : 400 % sur 16 m, étourdit 2,5 s, ramasse la meute au point visé (dans la nuée et le totem)"
+    },
+    {
+      "level": 15,
+      "id": "sh_hide",
+      "why": "+5 % vie"
+    },
+    {
+      "level": 16,
+      "id": "sh_hide",
+      "why": "+10 % vie"
+    },
+    {
+      "level": 17,
+      "id": "ancestortotem",
+      "why": "Totem hurleur : attire tout à 8 m à son pied, étourdit 2,5 s, battements ralentissent 3 s"
+    },
+    {
+      "level": 18,
+      "id": "sh_hide",
+      "why": "+15 % vie"
+    },
+    {
+      "level": 19,
+      "id": "mammoth",
+      "why": "Ultime : barrit 800 % à 7 m (renverse 2,5 s), 15 s à -40 % dégâts subis, Harmonie III"
+    },
+    {
+      "level": 20,
+      "id": "sh_drum",
+      "why": "+4 % Recharges (totem, sanglier, mammouth)"
+    },
+    {
+      "level": 21,
+      "id": "boarcharge",
+      "why": "Défenses : exposé +15 % dégâts subis 4 s, et saigne"
+    },
+    {
+      "level": 22,
+      "id": "sh_drum",
+      "why": "+8 % Recharges"
+    },
+    {
+      "level": 23,
+      "id": "sh_drum",
+      "why": "+12 % Recharges"
+    },
+    {
+      "level": 24,
+      "id": "sh_grove",
+      "why": "Clé de voûte Bosquet sacré : sorts de forme humaine +30 %, Esprit +50 % (nos bêtes ne restent que 3 s)"
+    },
+    {
+      "level": 25,
+      "id": "ancestortotem",
+      "why": "Aigle du totem : +100 % par battement sur le plus proche"
+    },
+    {
+      "level": 26,
+      "id": "sh_elk",
+      "why": "Grand élan : 1 % vie/s en Harmonie III (tissage)"
+    },
+    {
+      "level": 27,
+      "id": "mammoth",
+      "why": "Barrissement : +3 s de mammouth, renverse 4 s"
+    },
+    {
+      "level": 28,
+      "id": "sh_mend",
+      "why": "+1 % Siphon"
+    },
+    {
+      "level": 29,
+      "id": "sh_mend",
+      "why": "+2 % Siphon"
+    },
+    {
+      "level": 30,
+      "id": "sh_rake",
+      "why": "Labour d'esprit I : clics gauches +15 %, Griffes +2 Esprit"
+    },
+    {
+      "level": 31,
+      "id": "sh_rake",
+      "why": "Labour d'esprit II : 1 clic gauche sur 4 frappe double (+25 %)"
+    },
+    {
+      "level": 32,
+      "id": "sh_harmony",
+      "why": "Harmonie parfaite : chaque changement de forme en Harmonie III frappe 120 % à 4 m"
+    },
+    {
+      "level": 33,
+      "id": "sh_tusk",
+      "why": "+4 % Puissance"
+    },
+    {
+      "level": 34,
+      "id": "sh_tusk",
+      "why": "+8 % Puissance"
+    },
+    {
+      "level": 35,
+      "id": "sh_tusk",
+      "why": "+12 % Puissance"
+    },
+    {
+      "level": 36,
+      "id": "primalcall",
+      "why": "Appel primal : aigle 600 % à 3 m (14 m), étourdit 2,5 s, expose +30 % 6 s, recharge 14 s"
+    },
+    {
+      "level": 37,
+      "id": "sh_wild",
+      "why": "+2 % Précision"
+    },
+    {
+      "level": 38,
+      "id": "sh_wild",
+      "why": "+4 % Précision"
+    },
+    {
+      "level": 39,
+      "id": "sh_wild",
+      "why": "+6 % Précision"
+    },
+    {
+      "level": 40,
+      "id": "sh_kin",
+      "why": "Parenté sauvage : esprits (sanglier, aigles) +15 %"
+    },
+    {
+      "level": 41,
+      "id": "sh_kin",
+      "why": "Parenté sauvage II"
+    },
+    {
+      "level": 42,
+      "id": "sh_mend",
+      "why": "+3 % Siphon"
+    },
+    {
+      "level": 43,
+      "id": "primalcall",
+      "why": "Écho primal : l'appel déclenche aussi le souffle du Cercle (soin 10 % + 15 Esprit en homme)"
+    },
+    {
+      "level": 44,
+      "id": "sh_murder",
+      "why": "Volée de corbeaux I : nuée 4,5 s au lieu de 3 (+50 % par lancer)"
+    },
+    {
+      "level": 45,
+      "id": "sh_murder",
+      "why": "Volée de corbeaux II : dernier piqué 120 % et étourdit 0,5 s les aveuglés"
+    },
+    {
+      "level": 46,
+      "id": "sh_fur",
+      "why": "+2 % Garde"
+    },
+    {
+      "level": 47,
+      "id": "sh_fur",
+      "why": "+4 % Garde"
+    },
+    {
+      "level": 48,
+      "id": "sh_fur",
+      "why": "+6 % Garde"
+    },
+    {
+      "level": 49,
+      "id": "sh_bark",
+      "why": "+2 % Garde"
+    },
+    {
+      "level": 50,
+      "id": "sh_oath_elders",
+      "why": "Serment des anciens : souffle du Cercle toutes les 1,5 s, Harmonie III +35 %"
+    }
+  ],
+  "attributes": [
+    {
+      "from": 2,
+      "to": 50,
+      "split": {
+        "vit": 1
+      }
+    }
+  ],
+  "bar": [
+    {
+      "from": 1,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 6,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        "bearform",
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 10,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        "bearform",
+        "ancestortotem",
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 14,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        "bearform",
+        "ancestortotem",
+        "boarcharge",
+        null,
+        null
+      ]
+    },
+    {
+      "from": 19,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        "bearform",
+        "ancestortotem",
+        "boarcharge",
+        "mammoth",
+        null
+      ]
+    },
+    {
+      "from": 36,
+      "l": [
+        "spiritclaws",
+        "crows",
+        "wolfform",
+        "bearform",
+        "ancestortotem",
+        "boarcharge",
+        "mammoth",
+        "primalcall"
+      ]
+    }
+  ],
+  "notes": "Chaman lanceur à distance (forme humaine) qui tisse les formes pour le Cercle des bêtes. Les 9 premiers choix reprennent l'arbre actuel du perso (wolfform 1, sh_claws 2, sh_circle 2, bearform 1, sh_dodge 2, ancestortotem 1) : progress() lit talents[points dépensés], l'ordre doit coller à l'existant. Priorité : survie (ours ou Envol) > mammouth > totem > sanglier > appel primal > tissage du Cercle > nuée > griffes. Nuée de corbeaux (RMB) : une seule nuée, relancer quand la précédente a expiré (3 s, 4,5 s avec sh_murder) ou quand plus aucun monstre n'est dans ses 3 m ; viser bestAoe(12 m, r 3). Griffes d'esprit (LMB) : remplissage, viser la ligne de 3 m (largeur 1,8 m) qui couvre le plus de monstres à 12 m. Totem : 2+ monstres (ou élite) à 8 m du point visé, viser le centre de la meute à 12 m max ; avec le rang 2 il les attire et les étourdit 2,5 s : rester à 6 à 8 m du totem (soin 1,5 %/s à 8 m). Sanglier : 2+ monstres sur la ligne ou élite, viser le point où l'on veut regrouper (la nuée ou le totem) ; aussi en urgence (étourdit 2,5 s). Mammouth : 4+ monstres à 7 m, ou élite/boss, ou PV < 35 % avec 2+ attaquants ; pendant 15 s rester au contact (Coup de défenses LMB, Charge RMB recharge 3 s), l'Esprit ne brûle pas. Formes : wolfform et bearform sont des BASCULES (presser à nouveau rend l'homme) : un seul appui, jamais maintenu, et toujours vérifier g.sim.form avant. Il faut 5 d'Esprit pour entrer, puis 3/s brûlés (4,5 avec sh_grove). En forme de bête, les slots 0 et 1 deviennent Morsure/Curée (loup) ou Coup de patte/Écrasement (ours) : Curée et Écrasement coûtent 15 à 20 d'Esprit. Après chaque level up : learnTalent(id) puis envoyer {t:'bar', l:[...]} explicitement. Esquive : 'roll' (Envol du corbeau, 7 m, invulnérable 0,45 s, recharge 4 s). Les attributs (alloc) ne comptent plus dans yF : la règle d'attributs est neutre."
+}
