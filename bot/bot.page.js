@@ -359,7 +359,7 @@
       if (st.fight) st.fight.dmgIn[k] = (st.fight.dmgIn[k] ?? 0) + (ev.a ?? 0);
       hitUs.set(ev.s, now());
       const sw = swings.get(ev.s), e = ad.reach[k], dh = dist(m.pos, g.sim);
-      if (sw) { sw.hit = true; if (e && dh > e.d) e.d = ema(e.d, dh, e.n++); }
+      if (sw) { sw.hit = true; if (e?.d != null && dh > e.d) e.d = ema(e.d, dh, e.n++); }
     } else if (g.entities.monsters.has(ev.id) && (ev.s === g.meId || g.entities.allies.has(ev.s))) win.outDmg += ev.a ?? 0;
   }
   // Called every tick: accumulate exposure, flush samples every 4 s.
@@ -409,10 +409,10 @@
       if (m.dead || m.state === prev || m.state !== 'windup') continue;
       const k = m.def?.kind, d = dist(m.pos, me);
       if (army.some(a => dist(a.pos, m.pos) < d)) continue; // swinging at an ally, not at us
-      const e = ad.reach[k] ??= { d, n: 0, mel: 0, rng: 0 };
+      const e = ad.reach[k] ??= { d: null, n: 0, mel: 0, rng: 0 };
       if (SHOTS.includes(m.attack)) e.rng++;
       if (!CONTACT.includes(m.attack) || d > CHASE_PRIOR) continue;
-      e.mel++; e.d = ema(e.d, d, e.n++);
+      e.mel++; e.d = e.d == null ? d : ema(e.d, d, e.n); e.n++;
       swings.set(m.id, { k, m, v: m.def?.speed ?? PLAYER_SPEED, at: t, kite: st.strat === 'kite' && st.goal === 'fight' });
     }
     for (const [id, s] of swings) {
@@ -632,10 +632,15 @@
     }
     return [0, 0];
   }
-  // Hostile projectiles reaching us within 1.5 s (ours fly away from us): their rays, to step off.
+  // Hostile projectiles reaching us within 1.5 s: their rays, to step off. Hostile = first seen within 2 m of a monster
+  // (our bolts, shards and corpse bursts start at us or at the cursor).
+  const shotFoe = new Map();
   function shotsAtMe(me) {
-    const out = [];
-    for (const p of g.projectiles?.list?.values?.() ?? []) {
+    const out = [], list = g.projectiles?.list ?? new Map();
+    for (const id of shotFoe.keys()) if (!list.has(id)) shotFoe.delete(id);
+    for (const [id, p] of list) {
+      if (!shotFoe.has(id)) shotFoe.set(id, [...g.entities.visibleMonsters()].some(m => !m.dead && dist(m.pos, p.pos) < 2 + (m.radius ?? 0.6)));
+      if (!shotFoe.get(id)) continue;
       const rx = me.x - p.pos.x, rz = me.z - p.pos.z, v = Math.hypot(p.vel.x, p.vel.z) || 1, ux = p.vel.x / v, uz = p.vel.z / v;
       const tt = (rx * ux + rz * uz) / v;
       if (tt > 0 && tt < 1.5 && Math.abs(rx * uz - rz * ux) < 2 * ME_R) out.push({ x: p.pos.x, z: p.pos.z, ux, uz });
@@ -989,14 +994,25 @@
     let best = null, bd = 14;
     for (const d of g.drops.drops.values()) {
       if (st.lootTried?.has(d.id)) continue;
-      if (!(AUTO_LOOT.has(d.kind) || (d.kind === 'item' && !bagFullNow))) continue;
+      if (!(AUTO_LOOT.has(d.kind) || (d.kind === 'item' && !bagFullNow)) || !(lootScore(d) > 0)) continue;
       const dd = dist(d.pos, me);
       if (dd < bd) { bd = dd; best = d; }
     }
     return best;
   }
   // Goal score of a drop: unknown item 0.6, upgrade up to 1.05 by relative gear score gain, else 0.45 (sell value).
+  // Health globe: worth the hp it restores (learned heal fraction ad.globe, prior = what is missing), scaled by how soon
+  // we need it: at once while hit in the last 4 s, else by the deficit over one globe (small deficits regen anyway).
+  // The client only collects globes below full life and potions below 10, so those are worth 0 otherwise.
+  function globeValue() {
+    const miss = Math.max(0, 1 - g.hp / g.life), heal = ad.globe || miss;
+    if (!miss) return 0;
+    const fill = Math.min(miss, heal) / heal, hot = [...hitUs.values()].some(t => now() - t < 4000);
+    return fill * (hot ? 1 : Math.min(1, miss / heal));
+  }
   function lootScore(d) {
+    if (d?.kind === 'globe') return 0.95 * globeValue();
+    if (d?.kind === 'potion' && g.char.potions >= 10) return 0;
     if (AUTO_LOOT.has(d?.kind)) return 0.95; // beats dungeon/farm (+inertia) so nothing is left behind
     const it = d?.item;
     if (!it?.slot) return 0.6;
@@ -1617,6 +1633,8 @@
     trackLearn();
     account(dt, mobs);
     swingTick(me);
+    // Globe heal sample: life fraction gained 300 ms after we picked one up.
+    if (st.globePick && tick - st.globePick.at > 300) { const x = Math.max(0, g.hp - st.globePick.hp) / g.life; ad.globe = ad.globe == null ? x : ema(ad.globe, x, ad.globeN = (ad.globeN ?? 0) + 1); st.globePick = null; }
     st.lat = ema(st.lat ?? dt, dt, 1e9);
     abTick(dt);
     if (tick - (st.saveAt ?? 0) > 30000) { st.saveAt = tick; relax(); saveAd(); }
@@ -1801,6 +1819,7 @@
         if (p?.lost != null) { const v = p.lost + xpps() * (now() - p.at) / 1000; ad.deathCost = ema(ad.deathCost ?? v, v, ad.deathN = (ad.deathN ?? 0) + 1); st.deathPend = null; }
       }
       else if (ev.e === 'hit') onHit(ev);
+      else if (ev.e === 'undrop' && ev.by === g.meId && g.drops.drops.get(ev.id)?.kind === 'globe') st.globePick = { hp: g.hp, at: now() };
       else if (ev.e === 'xp') {
         const a = ev.a ?? 0, r = ad.ab.run;
         zoneStat(st.zone ?? 'fixe').xp += a; ad.tot.xp += a; st.xpTot = (st.xpTot ?? 0) + a;
@@ -1903,7 +1922,7 @@
       hp: `${g.hp}/${g.life}`, potions: g.char.potions, kills: st.kills, deaths: st.deaths, rolls: st.rolls ?? 0, lastDeath: st.lastDeath,
       min: Math.round((now() - (st.t0 || now())) / 60000), doing: st.last, retreat: st.retreat ? { why: st.retreat.why, chasers: st.retreat.ids.size, target: st.retreat.target } : null, retreats: st.retreats ?? 0, eng: st.lastEng ?? null, servants: servantCount(), talents: Object.keys(g.char.ch.tree ?? {}).length,
       goal: st.goal, moves: st.moves, goalSwitches: st.goals ?? 0, unsticks: st.unsticks ?? 0, questLabel: st.quest?.label ?? null, questEvents: st.quests ?? 0, lastQuest: st.lastQuest,
-      kite: { log: (st.kiteLog ?? []).slice(-8), lat: Math.round(st.lat ?? 0), reach: Object.fromEntries(Object.entries(ad.reach).map(([k, v]) => [k, `${v.d.toFixed(1)} m${v.rng > v.mel ? ' tir' : ''} (${v.n})`])),
+      kite: { log: (st.kiteLog ?? []).slice(-8), lat: Math.round(st.lat ?? 0), reach: Object.fromEntries(Object.entries(ad.reach).map(([k, v]) => [k, `${v.d?.toFixed(1) ?? '?'} m${v.rng > v.mel ? ' tir' : ''} (${v.n})`])),
         margin: Object.fromEntries(Object.entries(ad.kmargin).map(([k, v]) => [k, `${v.m.toFixed(2)} (${v.n})`])) },
       bound: g.char.bound ?? null, ways: g.char.ways?.length ?? 0, wayTrips: st.wayTrips ?? 0, binds: st.binds ?? 0,
       loots: st.loots ?? 0, equips: st.equips ?? 0, sold: st.sold ?? 0, claims: st.claims ?? 0, gold: g.char.gold, teleDodges: st.teleDodges ?? 0, caution: ad.caution, bought: st.bought ?? 0,
