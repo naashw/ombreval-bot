@@ -1,0 +1,344 @@
+{
+  "talents": [
+    {
+      "level": 1,
+      "id": "souldash",
+      "why": "Ruée spectrale : 10 m au curseur en 0,31 s, invulnérable, 550 % à tout ce qu'elle traverse, étourdit 1,5 s (recharge 9 s) ; +0,93 m/s soutenus en trajet"
+    },
+    {
+      "level": 2,
+      "id": "rp_edge",
+      "why": "+4 % Puissance"
+    },
+    {
+      "level": 3,
+      "id": "rp_reap",
+      "why": "Moisson sanglante I : le fil de la faux porte de 1,4 à 4,6 m (au lieu de 1,8 à 4,1) : les monstres au contact prennent 175 % et non 60 %"
+    },
+    {
+      "level": 4,
+      "id": "rp_harvester",
+      "why": "Moissonneur I : seuil du Trépas +3 % (17 % sans âmes)"
+    },
+    {
+      "level": 5,
+      "id": "rp_harvester",
+      "why": "Moissonneur II : seuil du Trépas +6 % (20 % sans âmes)"
+    },
+    {
+      "level": 6,
+      "id": "rp_harvest",
+      "why": "Grande moisson I : Moisson coûte 12 âmes au lieu de 22 (une Moisson par mort à 10 m)"
+    },
+    {
+      "level": 7,
+      "id": "rp_dodge",
+      "why": "Ombre fugace I : 2e charge de Passe-mort (2 x 9 m d'affilée pour décrocher ; le débit soutenu reste 1 / 4,5 s)"
+    },
+    {
+      "level": 8,
+      "id": "souldash",
+      "why": "Ruée spectrale II : le Trépas fauche à 30 % ce qu'elle traverse (nettoie un nœud en un passage)"
+    },
+    {
+      "level": 9,
+      "id": "doom",
+      "why": "Marque du trépas : 500 % à 4 m au curseur (14 m), Trépas +15 % 10 s, les marqués qui meurent explosent 500 % à 4 m"
+    },
+    {
+      "level": 10,
+      "id": "knell",
+      "why": "Glas funèbre : 600 % à 6,5 m autour de soi, terreur 3 s, ralentit 6 s, exposé +25 % 4 s, +8 âmes par touché (recharge 15 s)"
+    },
+    {
+      "level": 11,
+      "id": "rp_tempo",
+      "why": "+4 % Recharges (Ruée 8,64 s)"
+    },
+    {
+      "level": 12,
+      "id": "rp_tempo",
+      "why": "+8 % Recharges"
+    },
+    {
+      "level": 13,
+      "id": "rp_tempo",
+      "why": "+12 % Recharges (Ruée 7,92 s : 8,08 m/s soutenus)"
+    },
+    {
+      "level": 14,
+      "id": "wraithform",
+      "why": "Forme spectrale : onde 500 % à 7 m (terreur 2,5 s), puis 7 s à -50 % dégâts subis et 4 % de vol de vie (recharge 24 s)"
+    },
+    {
+      "level": 15,
+      "id": "souldash",
+      "why": "Ruée spectrale III : 2 charges (aller et retour sur un nœud gardé, double trait de fuite)"
+    },
+    {
+      "level": 16,
+      "id": "rp_feast",
+      "why": "Festin d'âmes I : chaque Trépas soigne 2 % de la vie"
+    },
+    {
+      "level": 17,
+      "id": "knell",
+      "why": "Glas II : rayon 7,8 m, terreur 4 s"
+    },
+    {
+      "level": 18,
+      "id": "rp_feast",
+      "why": "Festin d'âmes II : chaque Trépas soigne 4 % de la vie"
+    },
+    {
+      "level": 19,
+      "id": "requiem",
+      "why": "Requiem (ultime) : 2,2 s invulnérable, 4 vagues x 625 % à 9 m, tient 1 s chacune, terreur 3 s à la fin (recharge 75 s)"
+    },
+    {
+      "level": 20,
+      "id": "rp_shroud",
+      "why": "+5 % vie"
+    },
+    {
+      "level": 21,
+      "id": "wraithform",
+      "why": "Forme spectrale II : +2 s (9 s), chaque Trépas pendant la forme la prolonge de 1 s (4 s au plus)"
+    },
+    {
+      "level": 22,
+      "id": "rp_shroud",
+      "why": "+10 % vie"
+    },
+    {
+      "level": 23,
+      "id": "rp_shroud",
+      "why": "+15 % vie"
+    },
+    {
+      "level": 24,
+      "id": "rp_bell",
+      "why": "Clé de voûte Glas éternel : chaque Trépas terrifie 0,5 s les monstres à 3 m de la victime (contrôle en chaîne, aucun allié invoqué qui fausserait myAllies)"
+    },
+    {
+      "level": 25,
+      "id": "knell",
+      "why": "Glas III : attire la meute au bout de la faux (2,6 m) au lieu de la repousser : Glas puis Fauchage sur tout le groupe"
+    },
+    {
+      "level": 26,
+      "id": "rp_bone",
+      "why": "+2 % Garde"
+    },
+    {
+      "level": 27,
+      "id": "requiem",
+      "why": "Requiem II : ses vagues fauchent à 30 % (Trépas élargi)"
+    },
+    {
+      "level": 28,
+      "id": "wraithform",
+      "why": "Forme spectrale III : se déclenche seule sous 30 % de vie (3 s, une fois / 60 s) : filet de sécurité pendant les récoltes"
+    },
+    {
+      "level": 29,
+      "id": "rp_bone",
+      "why": "+4 % Garde"
+    },
+    {
+      "level": 30,
+      "id": "rp_bone",
+      "why": "+6 % Garde"
+    },
+    {
+      "level": 31,
+      "id": "rp_edge",
+      "why": "+8 % Puissance"
+    },
+    {
+      "level": 32,
+      "id": "rp_edge",
+      "why": "+12 % Puissance"
+    },
+    {
+      "level": 33,
+      "id": "doom",
+      "why": "Marque II : rayon 5,5 m, +4 âmes par mort marquée"
+    },
+    {
+      "level": 34,
+      "id": "rp_reap",
+      "why": "Moisson sanglante II : ce que le manche touche est repoussé de 0,8 m, au bout de la faux"
+    },
+    {
+      "level": 35,
+      "id": "rp_whet",
+      "why": "Affûtage I : +30 % de dégâts critiques au fil (critique 20 % au fil)"
+    },
+    {
+      "level": 36,
+      "id": "phantom",
+      "why": "Faux fantôme : 240 % aller et retour sur 10 m, ramène les proies à 3 m (recharge 10 s) : décroche les monstres d'un nœud à distance"
+    },
+    {
+      "level": 37,
+      "id": "rp_endure",
+      "why": "+2 % Garde"
+    },
+    {
+      "level": 38,
+      "id": "rp_endure",
+      "why": "+4 % Garde"
+    },
+    {
+      "level": 39,
+      "id": "rp_endure",
+      "why": "+6 % Garde (Garde totale 20 %)"
+    },
+    {
+      "level": 40,
+      "id": "rp_veil",
+      "why": "Voile I : un Passe-mort à travers un marqué ou un monstre sous 50 % rend sa charge (1 / 5 s)"
+    },
+    {
+      "level": 41,
+      "id": "doom",
+      "why": "Marque III : l'explosion d'un marqué marque ceux qu'elle touche (2 rebonds)"
+    },
+    {
+      "level": 42,
+      "id": "rp_whet",
+      "why": "Affûtage II : une passe qui prend 3+ ennemis rend 4 âmes"
+    },
+    {
+      "level": 43,
+      "id": "phantom",
+      "why": "Faux fantôme II : tournoie 1,5 s au bout de sa course (80 % / 0,25 s à 1,4 m)"
+    },
+    {
+      "level": 44,
+      "id": "rp_quick",
+      "why": "+3 % Recharges (15 %)"
+    },
+    {
+      "level": 45,
+      "id": "rp_quick",
+      "why": "+6 % Recharges (18 %)"
+    },
+    {
+      "level": 46,
+      "id": "rp_quick",
+      "why": "+9 % Recharges (21 % : Ruée 7,11 s, 8,20 m/s soutenus)"
+    },
+    {
+      "level": 47,
+      "id": "rp_macabre",
+      "why": "Danse macabre : +25 % dégâts 3 s après un Passe-mort"
+    },
+    {
+      "level": 48,
+      "id": "rp_reaping",
+      "why": "Moisson des âmes I : Moisson tire les ennemis jusqu'au fil (2,6 m), +20 % dégâts"
+    },
+    {
+      "level": 49,
+      "id": "rp_hunger",
+      "why": "Faim des morts : +2 âmes par mort à 10 m"
+    },
+    {
+      "level": 50,
+      "id": "rp_oath_toll",
+      "why": "Serment du glas : chaque Trépas ralentit de 50 % (2 s) et expose +15 % (4 s) les monstres à 4 m"
+    }
+  ],
+  "attributes": [
+    {
+      "from": 2,
+      "to": 50,
+      "split": {
+        "vit": 1
+      }
+    }
+  ],
+  "bar": [
+    {
+      "from": 1,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 9,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        "doom",
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 10,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        "doom",
+        "knell",
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 14,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        "doom",
+        "knell",
+        "wraithform",
+        null,
+        null
+      ]
+    },
+    {
+      "from": 19,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        "doom",
+        "knell",
+        "wraithform",
+        "requiem",
+        null
+      ]
+    },
+    {
+      "from": 36,
+      "l": [
+        "reap",
+        "harvest",
+        "souldash",
+        "doom",
+        "knell",
+        "wraithform",
+        "requiem",
+        "phantom"
+      ]
+    }
+  ],
+  "notes": "Faucheur récolteur (REAPER.md) : la récolte est l'objectif, le combat sert à monter de niveau (niveau perso visé : 10 pour les zones T1, 18 pour T2, 24 pour T3, 32 pour T4), à vider un nœud gardé et à se défendre pendant la jauge. Le personnage (Prospecteur) n'a encore dépensé aucun point : l'ordre part de zéro, progress() lit talents[points dépensés] (1 point par niveau). Choix exclusifs : knell (pas graves, groupe c), wraithform (pas siphon, groupe d), rp_bell (groupe k), rp_oath_toll (groupe s). Priorité combat : survie (Forme spectrale, Passe-mort, Requiem) > Glas > Ruée spectrale > Marque > Faux fantôme > Moisson > Fauchage. Trajet : Passe-mort dès qu'il est prêt (visée = point du chemin A* à 7,4 m, téléporté à visée + 1,6 m, 9 m max, jamais à travers un mur) et Ruée spectrale dès qu'elle est prête (visée à 10 m sur le chemin, ligne libre), sauf dans les 3 s avant une pierre de passage ou une porte (la Ruée remet outOfCombat à 0, pas le Passe-mort) et jamais à travers une meute qu'on ne veut pas tirer. Les clics enracinent (aucune marche pendant Fauchage 0,8/aps ni Moisson 0,7/sqrt(aps)) : ne jamais frapper en trajet. Le Passe-mort va au CURSEUR (ax, az), pas dans la direction de marche : toujours fournir aim. Après chaque level up : learnTalent(id) puis {t:'bar', l:[...]} explicite. Les attributs (alloc) ne comptent plus dans yF : règle neutre."
+}

@@ -1,0 +1,491 @@
+{
+  "assumptions": {
+    "level": 12,
+    "aps": 1.2,
+    "apsNote": "faux 1.2 (classique) / serpe 1.3 / grande faux 0.75 (Vh, les clics d'armes non classiques durent 1/aps à gauche, dur fixe à droite)",
+    "castFormula": "reap 0.8/aps (coup à 40 %), harvest 0.7/sqrt(aps) (coup à 45 %) ; souldash distance/32 (0,125 à 0,31 s) ; doom 0.5, knell 0.62, graves 0.52 (+0,6 s), wraithform 0.45, siphon 2.42 (canal), requiem 2.22, phantom 0.5 ; Passe-mort 0.22 ; la Hâte raccourcit les sorts non-clics de durée <= 1,5 s",
+    "talentsAt12": {
+      "souldash": 2,
+      "rp_edge": 1,
+      "rp_reap": 1,
+      "rp_harvester": 2,
+      "rp_harvest": 1,
+      "rp_dodge": 1,
+      "doom": 1,
+      "knell": 1,
+      "rp_tempo": 2
+    },
+    "essencePerHit": {
+      "resource": "Âmes (g.sim.fury), max 100, gains calculés par le serveur (multiplication par furyGen 1,1 non vérifiée) ; retombent de 3/s après 5 s hors combat (hie.tick)",
+      "reapHit": [
+        3.2,
+        0.6,
+        0.3
+      ],
+      "death": 10,
+      "deathRareChampionBoss": 30,
+      "deathReach": 10,
+      "knellPerTarget": 8,
+      "doomPerMarkedDeath": 6,
+      "requiemPerTargetPerWave": 6,
+      "wraithformPerTarget": 2,
+      "hunger": 2,
+      "serverSide": "crédit exact des âmes (coups, morts) calculé par le serveur ; valeurs tirées des tooltips du bundle"
+    },
+    "trepas": {
+      "name": "Le Trépas",
+      "base": 0.14,
+      "perTier": 0.03,
+      "tiers": [
+        25,
+        50,
+        75,
+        100
+      ],
+      "harvesterPerRank": 0.03,
+      "cap": 0.5,
+      "rule": "un monstre ordinaire laissé sous le seuil par nos coups meurt net ; seuil = 14 % + 3 % par palier d'âmes (25/50/75/100) + 3 % par rang de rp_harvester ; dès le palier III (75 âmes), rares et champions à mi-seuil (seuil plein dès le palier I avec rp_angel, non pris) ; jamais les seigneurs. Chaque Trépas : Linceul -20 % dégâts subis 2 s ; Festin +2 %/rang de vie ; Glas éternel terreur 0,5 s à 3 m",
+      "thresholdByLevel": {
+        "1-3": "14 à 26 %",
+        "5+": "20 à 32 % (rp_harvester II)"
+      }
+    },
+    "movement": {
+      "walk": 5.28,
+      "formula": "5.28 x moveSpd ; les clics et sorts du faucheur enracinent (seul le Siphon marche à 50 %)",
+      "sustained": "v = w + (9 - 0.22 w)/4.5 + (10 - 0.3125 w)/(9 (1 - cdr)) ; w = 5.28 x (1 + moveSpd/100)",
+      "byLevel": {
+        "sans talent": 7.02,
+        "1-10": 7.95,
+        "11": 7.99,
+        "12": 8.03,
+        "13-43": 8.08,
+        "44": 8.11,
+        "45": 8.15,
+        "46-50": 8.2
+      },
+      "bootsMoveSpd9": {
+        "1-10": 8.39,
+        "13-43": 8.51,
+        "46-50": 8.63
+      }
+    },
+    "dmgUnit": "% de Puissance (yF power), par cible, hors critiques et hors Trépas ; rangs du niveau 12",
+    "talentRows": "rangées aux niveaux [1,3,6,10,14,19,24,30,36,43,50] ; rang N d'une active = niveau de rangée + 7 x (N-1), ultime + 8 ; passifs, maîtrises et stats : tous rangs dès la rangée ; groupes exclusifs : c (knell | graves), d (wraithform | siphon), k (rp_eternal | rp_cortege | rp_bell), s (rp_oath_ferry | rp_oath_void | rp_oath_toll) ; 1 point par niveau ; aucun prérequis ; actives du talent (souldash, doom, knell, graves, wraithform, siphon, requiem, phantom) inutilisables tant que non apprises (RM : btn LMB/RMB/ROLL ou talent > 0)"
+  },
+  "skills": {
+    "reap": {
+      "dmgPct": 175,
+      "splashPct": 175,
+      "radius": 4.6,
+      "inner": 1.4,
+      "range": 4.6,
+      "castSec": 0.67,
+      "cd": 0,
+      "cost": 0,
+      "essenceGain": "+3,2 âmes par coup (1re cible), +0,6 par cible en plus (pm.hit) ; +4 par passe à 3+ cibles avec rp_whet R2",
+      "dpsPerCastSec": 262,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "arc",
+        "inner": 1.4,
+        "outer": 4.6,
+        "halfAngleRad": 1.6,
+        "at": "self"
+      },
+      "utility": "LMB, faux classique : demi-cercle devant soi (±92°), aller puis retour (combo 0/1). Le fil (de 1,8 à 3,6 m + allonge de l'arme 0,5, soit 1,4 à 4,6 m avec rp_reap R1) fait 175 % et +15 % de chance de critique ; plus près, le manche ne fait que 60 %. Durée 0,8/aps (0,67 s à 1,2), coup à 40 %. ENRACINE : aucune marche pendant le coup",
+      "useWhen": "remplissage au contact : viser le monstre dont la distance est dans [1,4 ; 4,6] m, sinon se replacer (reculer si tout est sous 1,4 m, avancer si au-delà de 4,6 m) ; jamais en trajet",
+      "rankScaling": {
+        "base": "175 % au fil, 60 % au manche",
+        "rp_reap R1 (3)": "fil de 1,4 à 4,6 m",
+        "rp_reap R2 (3)": "le manche repousse de 0,8 m au bout de la faux",
+        "rp_whet R1/R2 (30)": "+30 % dégâts critiques au fil / +4 âmes par passe à 3+ cibles",
+        "rp_fullscythe (30, non pris)": "au palier IV, lame d'âme 80 % sur 6 m",
+        "rp_eternal (24, non pris)": "à 100 âmes, le Fauchage suivant est une Moisson gratuite +100 %"
+      }
+    },
+    "harvest": {
+      "dmgPct": 260,
+      "splashPct": 260,
+      "radius": 4.5,
+      "range": 4.5,
+      "castSec": 0.64,
+      "cd": 0,
+      "cost": 12,
+      "essenceGain": "coûte 22 âmes, 12 avec rp_harvest R1 (pris au niveau 6) ; +6 âmes par mort avec rp_reaping R2 (non pris)",
+      "dpsPerCastSec": 406,
+      "dmgPerEssence": 21.7,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 4.5,
+        "at": "self"
+      },
+      "utility": "RMB : tour complet de la faux, 260 % à 4,5 m (effet visuel 4,3 m + allonge) et aspire les ennemis vers soi. Durée 0,7/sqrt(aps) = 0,64 s, coup à 45 %. Enracine",
+      "useWhen": "âmes >= coût && (2+ monstres à 4,5 m || 1 monstre au-dessus du seuil du Trépas qui en mourrait) ; meilleur juste après le Glas (exposé +25 %)",
+      "rankScaling": {
+        "rp_harvest R1 (6)": "coût 12",
+        "rp_harvest R2 (non pris)": "dépense toutes les âmes, +5 % par âme (fait chuter le seuil du Trépas)",
+        "rp_reaping R1 (43)": "tire jusqu'au fil (2,6 m), +20 %",
+        "rp_oath_ferry (non pris)": "à 100 âmes, gratuite 5 s"
+      }
+    },
+    "souldash": {
+      "dmgPct": 550,
+      "splashPct": 550,
+      "radius": 0.95,
+      "range": 10,
+      "minRange": 4,
+      "castSec": 0.31,
+      "cd": 9,
+      "cost": 0,
+      "charges": 1,
+      "essenceGain": "aucune directe ; met outOfCombat à 0",
+      "dpsPerCastSec": 1774,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "line",
+        "len": 10,
+        "halfWidth": 0.95,
+        "at": "cursor"
+      },
+      "utility": "Ruée spectrale (talent, niveau 1) : fonce jusqu'au curseur (distance bornée à 4..10 m) à 32 m/s, invulnérable, 550 % à tout ce qu'elle fend, étourdit 1,5 s ; chaque traversé est « passé » (Fauchage suivant critique assuré, Trépas +10 % 1,5 s). S'arrête sur un mur. Recharge 9 s x (1 - Recharges)",
+      "useWhen": "combat : 2+ monstres sur la ligne de 10 m ou élite, ou pour traverser une meute et sortir d'un encerclement ; trajet : dès qu'elle est prête, visée à 10 m sur le chemin si la ligne est libre et sans meute, sauf dans les 3 s avant une pierre ou une porte",
+      "rankScaling": {
+        "R1 (1)": "550 %, étourdit 1,5 s",
+        "R2 (8)": "le Trépas fauche à 30 % les traversés",
+        "R3 (15)": "2 charges"
+      }
+    },
+    "doom": {
+      "dmgPct": 500,
+      "splashPct": 500,
+      "radius": 4,
+      "range": 14,
+      "castSec": 0.5,
+      "cd": 12,
+      "cost": 0,
+      "duration": 10,
+      "essenceGain": "+6 âmes par mort marquée (+4 avec R2)",
+      "dpsPerCastSec": 1000,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 4,
+        "at": "cursor",
+        "max": 14
+      },
+      "utility": "Marque du trépas : 500 % à 4 m au curseur (14 m), marque 10 s : Trépas +15 %, un marqué qui meurt explose (500 % à 4 m)",
+      "useWhen": "2+ monstres à 4 m du point visé ou élite ; lancer AVANT le Glas et la Moisson (les explosions enchaînent)",
+      "rankScaling": {
+        "R1 (6)": "500 %",
+        "R2 (13)": "rayon 5,5 m, +4 âmes par mort marquée",
+        "R3 (20)": "l'explosion marque ceux qu'elle touche (2 rebonds)"
+      }
+    },
+    "knell": {
+      "dmgPct": 600,
+      "splashPct": 600,
+      "radius": 6.5,
+      "range": 0,
+      "castSec": 0.62,
+      "cd": 15,
+      "cost": 0,
+      "essenceGain": "+8 âmes par ennemi touché",
+      "dpsPerCastSec": 968,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 6.5,
+        "at": "self"
+      },
+      "utility": "Glas funèbre : 600 % à 6,5 m autour de soi, terreur 3 s, ralentit 6 s, exposé +25 % 4 s. R3 : attire au bout de la faux au lieu de repousser",
+      "useWhen": "2+ monstres à 6,5 m, ou 1 attaquant au contact pendant une récolte, ou PV < 50 % avec attaquant (terreur = 3 à 4 s de répit) ; ouvre le combat après la Marque",
+      "rankScaling": {
+        "R1 (10)": "600 %, terreur 3 s",
+        "R2 (17)": "rayon 7,8 m, terreur 4 s",
+        "R3 (24)": "attire la meute à 2,6 m (fil de la faux)"
+      }
+    },
+    "wraithform": {
+      "dmgPct": 500,
+      "splashPct": 500,
+      "radius": 7,
+      "range": 0,
+      "castSec": 0.45,
+      "cd": 24,
+      "cost": 0,
+      "duration": 7,
+      "essenceGain": "+2 âmes par ennemi touché pendant la forme",
+      "dpsPerCastSec": 1111,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 7,
+        "at": "self"
+      },
+      "utility": "Forme spectrale : onde 500 % à 7 m, terreur 2,5 s ; 7 s à -50 % dégâts subis, 4 % des dégâts rendus en vie",
+      "useWhen": "survie : PV < 50 % avec 2+ attaquants, ou élite au contact, ou 4+ monstres à 7 m ; R3 se déclenche seule sous 30 %",
+      "rankScaling": {
+        "R1 (14)": "7 s",
+        "R2 (21)": "9 s, +1 s par Trépas (4 s au plus)",
+        "R3 (28)": "auto sous 30 % de vie, 3 s, une fois / 60 s"
+      }
+    },
+    "requiem": {
+      "dmgPct": 2500,
+      "splashPct": 2500,
+      "radius": 9,
+      "range": 0,
+      "castSec": 2.22,
+      "cd": 75,
+      "cost": 0,
+      "essenceGain": "+6 âmes par ennemi et par vague",
+      "dpsPerCastSec": 1126,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 9,
+        "at": "self"
+      },
+      "utility": "Ultime : 2,22 s invulnérable en l'air, 4 vagues x 625 % à 9 m, chacune tient 1 s, la dernière terrifie 3 s",
+      "useWhen": "4+ monstres à 9 m, élite ou boss, ou PV < 30 % avec 2+ attaquants et Forme spectrale en recharge (2,2 s d'invulnérabilité)",
+      "rankScaling": {
+        "R1 (19)": "4 x 625 %",
+        "R2 (27)": "Trépas à 30 % sur ses vagues"
+      }
+    },
+    "phantom": {
+      "dmgPct": 480,
+      "splashPct": 480,
+      "radius": 1.4,
+      "range": 10,
+      "castSec": 0.5,
+      "cd": 10,
+      "cost": 0,
+      "essenceGain": "+8 âmes par ennemi achevé avec R3 (non pris)",
+      "dpsPerCastSec": 960,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "line",
+        "len": 10,
+        "halfWidth": 1.4,
+        "at": "self"
+      },
+      "utility": "Faux fantôme : file 10 m à 22 m/s (240 %), revient (240 %) et ramène les proies à 3 m, au bout de la faux",
+      "useWhen": "monstres sur un nœud à 5..10 m : les décrocher vers soi avant de récolter ; ou 2+ monstres sur la ligne",
+      "rankScaling": {
+        "R1 (36)": "240 % x 2",
+        "R2 (43)": "tournoie 1,5 s au bout (80 % / 0,25 s à 1,4 m)",
+        "R3 (50, non pris)": "Trépas 25 %, +8 âmes"
+      }
+    },
+    "roll": {
+      "dmgPct": 0,
+      "splashPct": 0,
+      "radius": 0,
+      "range": 9,
+      "castSec": 0.22,
+      "cd": 4.5,
+      "cost": 0,
+      "charges": 1,
+      "essenceGain": "aucune ; -10 âmes par passe avec rp_oath_void (non pris)",
+      "dpsPerCastSec": 0,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "Passe-mort : téléporte à (curseur + 1,6 m), 9 m au plus, jamais à travers un mur (arrêt au premier obstacle), invulnérable 0,3 s, action de 0,22 s, annule toute action. Curseur à moins d'1 m : 5 m dans la direction de marche. Le monstre traversé est « passé ». Recharge 4,5 s, NON réduite par les Recharges. Ne remet pas outOfCombat à 0",
+      "useWhen": "trajet : dès qu'il est prêt, visée sur le point du chemin A* à 7,4 m (arrivée à 9 m), ligne libre ; combat : attaque annoncée, encerclement, ou PV < 40 % avec attaquant au contact ; traverser un monstre pour le « passer » avant un Fauchage",
+      "rankScaling": {
+        "rp_dodge R1 (6)": "2 charges (rechargées l'une après l'autre)",
+        "rp_dodge R2 (non pris)": "l'ombre de départ fauche 80 % à 2,5 m",
+        "rp_veil R1 (36)": "à travers un marqué ou un monstre < 50 % : charge rendue (1 / 5 s)",
+        "rp_macabre (43)": "+25 % dégâts 3 s après",
+        "rp_oath_void (non pris)": "+2 charges, 10 âmes chacune"
+      }
+    },
+    "graves": {
+      "dmgPct": 800,
+      "splashPct": 800,
+      "radius": 4.2,
+      "range": 14,
+      "castSec": 0.52,
+      "cd": 12,
+      "cost": 0,
+      "delay": 0.6,
+      "essenceGain": "+2 âmes par mort dans la fosse avec R3",
+      "dpsPerCastSec": 1538,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "shape": {
+        "k": "circle",
+        "r": 4.2,
+        "at": "cursor",
+        "max": 14
+      },
+      "utility": "Tombes ouvertes (exclusif avec knell, NON PRIS) : 0,6 s après, 800 % à 4,2 m au curseur, traîne la meute au centre et la tient 2,5 s",
+      "useWhen": "variante dégâts : 3+ monstres groupés à 14 m",
+      "rankScaling": {
+        "R2 (17)": "zone +30 %, tenue +1 s",
+        "R3 (24)": "reste ouverte 4 s puis se referme (400 %, traîne et tient)"
+      }
+    },
+    "siphon": {
+      "dmgPct": 1120,
+      "splashPct": 1120,
+      "radius": 9,
+      "range": 9,
+      "castSec": 2.42,
+      "cd": 16,
+      "cost": 20,
+      "essenceGain": "+10 âmes par lien tenu jusqu'au bout avec R3",
+      "dpsPerCastSec": 463,
+      "dmgPerEssence": 56,
+      "makesCorpse": false,
+      "utility": "Siphon d'âmes (exclusif avec wraithform, NON PRIS) : 2,42 s, lie jusqu'à 4 ennemis à 9 m (immobiles), 120 % / 0,4 s chacun dont 30 % soignent, +400 % à la fin ; marche à 50 %",
+      "useWhen": "variante soin : 2+ monstres à 9 m et PV < 70 %",
+      "rankScaling": {
+        "R2 (21)": "6 liens",
+        "R3 (28)": "+10 âmes par lien complet"
+      }
+    }
+  },
+  "essence": {
+    "valuePerPoint": 0,
+    "valueNote": "les âmes ne servent qu'à la Moisson (12 avec rp_harvest) et au seuil du Trépas (+3 % par tranche de 25). Une Moisson sur 2+ cibles rapporte plus que la tranche qu'elle coûte ; aucune réserve",
+    "reserveRule": 0,
+    "income": "+10 par mort à 10 m (+30 rare/champion/seigneur), +8 par cible du Glas, +6 par mort marquée, +3,2 par coup de faux ; un pack de 3 = environ 40 âmes = 3 Moissons ; -3/s après 5 s hors combat"
+  },
+  "bestByCluster": {
+    "N1": {
+      "dmgPerCastSec": {
+        "reap": 262,
+        "harvest": 406,
+        "souldash": 1774,
+        "doom": 1000,
+        "knell": 968,
+        "wraithform": 1111,
+        "requiem": 1126,
+        "phantom": 960
+      },
+      "bestSpammable": "reap (harvest seulement s'il achève)",
+      "bestOverall": "souldash",
+      "bestPerEssence": "harvest (seule dépense d'âmes du build)"
+    },
+    "N2": {
+      "dmgPerCastSec": {
+        "reap": 524,
+        "harvest": 812,
+        "souldash": 2661.0,
+        "doom": 2000,
+        "knell": 1936,
+        "wraithform": 2222,
+        "requiem": 2252,
+        "phantom": 1440.0
+      },
+      "bestSpammable": "harvest dès que les âmes le permettent, puis reap",
+      "bestOverall": "souldash",
+      "bestPerEssence": "harvest (seule dépense d'âmes du build)"
+    },
+    "N3": {
+      "dmgPerCastSec": {
+        "reap": 655.0,
+        "harvest": 1218,
+        "souldash": 3548,
+        "doom": 3000,
+        "knell": 2904,
+        "wraithform": 3333,
+        "requiem": 3378,
+        "phantom": 1920
+      },
+      "bestSpammable": "harvest dès que les âmes le permettent, puis reap",
+      "bestOverall": "souldash",
+      "bestPerEssence": "harvest (seule dépense d'âmes du build)"
+    },
+    "N5": {
+      "dmgPerCastSec": {
+        "reap": 917.0,
+        "harvest": 2030,
+        "souldash": 4435.0,
+        "doom": 5000,
+        "knell": 4840,
+        "wraithform": 5555,
+        "requiem": 5630,
+        "phantom": 2880
+      },
+      "bestSpammable": "harvest dès que les âmes le permettent, puis reap",
+      "bestOverall": "requiem",
+      "bestPerEssence": "harvest (seule dépense d'âmes du build)"
+    },
+    "assumptions": "N monstres groupés à 1,8 m ; fil de la faux : 1 / 2 / 2,5 / 3,5 cibles ; Ruée : 1 / 1,5 / 2 / 2,5 ; Faux fantôme : 1 / 1,5 / 2 / 3 ; faux classique aps 1,2, hors critiques, hors Trépas",
+    "reading": "Par seconde de cast : Ruée (1774 %/cible) > Tombes > Requiem > Forme spectrale > Marque > Glas > Faux fantôme > Moisson 406 > Fauchage 262. Les sorts à recharge partent dès que leur condition est remplie. Le Trépas multiplie tout par 1/(1-seuil) sur les monstres ordinaires (x1,25 à 20 %, x1,47 à 32 %) : un pack de 3 monstres de son niveau meurt en 1 à 2 s avec Marque + Glas + Ruée, en 2 à 4 s au Fauchage seul."
+  },
+  "gear": {
+    "formula": {
+      "power": "(0.04*lvlBase + sum item pow*(1+UPG[up]/100)) * (1+powPct/100) * frame.dmg ; lvlBase = 100+(20*lvl)^1.2 ; reaper frame dmg 1 life 1 guard 8 (bundle Yd.reaper.frame, vérifié en jeu : niv 4, pow 1 -> 12.687)",
+      "life": "(lvlBase + sum item hp*(1+UPG[up]/100)) * (1+lifePct/100) * frame.life (vérifié : 303 au niv 4 avec hp 11)",
+      "affixes": "flat % points, x(1+UPG[up]/200) plafonné au max légendaire ; UPG = [0,4,8,12,17,22,28,35,43,52,62] ; caps crit 60 (base 5), critDmg +250 (base 50), guard 60, pen 50, execute 75, leech 25, tenacity 75, haste 50, cdr 50, moveSpd 45",
+      "hit": "power * (1 + crit/100*critDmg/100) * execF ; execF = 1 + 0.35*execute/100 (ASSUMPTION: 35% of damage under 35% hp)",
+      "aps": "fixe par base : faux 1.2 (classique : reap 0.8/aps, harvest 0.7/sqrt(aps)), serpe 1.3, grande faux 0.75 (Vh ; la table d'objets dit 0.9 et rien pour la serpe, d'où stats.aps 1.2) ; la Hâte ne touche que les sorts non-clics de durée <= 1.5 s",
+      "dpsIndex": "dps = hit*(0.8*clickPct/clickSec + 43 + 164/(1-cdr))/100/(1-0.2) ; faux : clickPct = 175 (fil), clickSec = 0.8/aps ; 43 = une Moisson 260 % toutes les 6 s ; 164 = Ruée 550/9 + Glas 600/15 + Marque 500/12 + Forme 500/24 (%/s par cible) ; /(1-0.2) = Trépas moyen. Serpe : clickPct = 1.72 x 175 = 301, clickSec = 1/1.3, Moisson remplacée par Ruée moissonneuse (2.102 x 260 = 547 %, ligne 6 m, même coût) : terme 43 -> 90. Grande faux : clickPct = 1.149 x 175 = 201, clickSec = 1/0.75, terme 43 -> 54 (faux boomerang 1.245 x 260 = 324 %)",
+      "ehp": "life/(1-guard/100) + leech/100*dps*5 (ASSUMPTION: 5 s of leech)",
+      "score": "dps * sqrt(ehp) * vTravel/7.95 (bot récolteur : le débit de récolte suit la vitesse de trajet ; vTravel avec le moveSpd de l'objet, formule assumptions.movement) -> compare items by swapping them into the full stat sheet; higher wins",
+      "note": "alloc attributes no longer feed stats (yF ignores ch.alloc) ; moveSpd : bottes « du Vent » 3 à 9 % (x1,1 rare, x1,2 mythique, x1,25 légendaire, x(1+UPG/200)) et élixir quick 2 à 5 % ; aucun talent de vitesse chez le faucheur"
+    },
+    "weaponBases": {
+      "scythe": {
+        "aps": 1.2
+      },
+      "sickle": {
+        "aps": 1.3
+      },
+      "greatscythe": {
+        "aps": 0.75
+      },
+      "rule": "bases cls reaper seulement ; préférer scythe (classique : vrais Fauchage et Moisson, maîtrises rp_reap/rp_harvest/rp_whet comprises, Moisson aspire). sickle si son pow dépasse celui de la meilleure faux de 30 % ou plus (clic gauche brut +35 % mais arc de 2 m, Ruée moissonneuse 6 m qui soigne 1 % par traversé ; maîtrises sur clics non classiques non vérifiées, serveur). greatscythe seulement à +80 % (clic gauche 151 %/s, arc étroit 6,5 m)"
+    }
+  },
+  "talentPlanReview": {
+    "verdict": "Plan pour un récolteur : mobilité dès le niveau 1 (Ruée), Passe-mort 2 charges au 7, contrôle de zone (Glas terreur 3-4 s, Marque, Requiem invulnérable) et filets de survie (Forme spectrale III auto sous 30 %, Festin, Linceul, Garde +12 %). Aucun talent de vitesse n'existe chez le faucheur : la vitesse vient des bottes.",
+    "swaps": [
+      {
+        "level": 10,
+        "from": "knell",
+        "to": "graves",
+        "why": "si le bot tue trop lentement : 800 % et tenue 2,5 s au curseur, mais plus de terreur autour de soi pendant la récolte"
+      },
+      {
+        "level": 14,
+        "from": "wraithform",
+        "to": "siphon",
+        "why": "si les morts viennent d'usure lente plutôt que de pics : soin 30 % des dégâts, mais coûte 20 âmes et canal 2,4 s"
+      },
+      {
+        "level": 24,
+        "from": "rp_bell",
+        "to": "rp_cortege",
+        "why": "plus de dégâts (3 faucheurs spectraux 6 s) ; attention : les alliés invoqués sont comptés par myAllies()"
+      },
+      {
+        "level": 50,
+        "from": "rp_oath_toll",
+        "to": "rp_oath_void",
+        "why": "4 Passe-morts d'affilée pour fuir (10 âmes chacun, hors combat les âmes retombent : aucun gain de trajet soutenu)"
+      }
+    ],
+    "keep": "souldash R1@1 R2@8 R3@15, rp_dodge@7, knell@10 (R3@25), rp_tempo 11-13, wraithform@14 (R3@28), requiem@19"
+  },
+  "potion": {
+    "instantPct": 35,
+    "hotPct": 20,
+    "hotSec": 3,
+    "cdSec": 1.5,
+    "source": "client potion tooltip index.pretty.js L93399: Rend 35 % de la vie instantanément puis 20 % en 3 s, recharge 1,5 s"
+  }
+}
