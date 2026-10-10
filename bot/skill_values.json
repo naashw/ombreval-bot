@@ -1,0 +1,448 @@
+{
+  "assumptions": {
+    "level": 9,
+    "aps": 1.25,
+    "apsNote": "bonewand 1.25 / deathstaff 0.9 base; char aps = weaponAps*(1+(atkSpd+0.15*(lvl-1))/100+0.002*agi)",
+    "castFormula": "necro: bonebolt = 0.72/aps, blight = 0.7/aps (verified in code UN.start, NOT sqrt); all other skills fixed dur (raise 0.6, decrepify 0.6, corpsex 0.55, golem 0.8, colossus 0.9, sacrifice 0.45)",
+    "talentsAt9": {
+      "nc_bonebolt": 2,
+      "nc_blight": 1,
+      "raise": 2,
+      "corpsex": 1,
+      "nc_rot": 3
+    },
+    "essencePerHit": {
+      "bonebolt": 4,
+      "extraTargetRaw": "Zb.hit[1]=1 / hit[2]=0.3: consumer is server-side, meaning unverified",
+      "killWithin12m": 6,
+      "hurt": 0,
+      "nc_bonebolt_R2": "+1 per extra target (<=4)",
+      "nc_lich": "3 per servant kill",
+      "sacrifice": "2 per shard"
+    },
+    "dmgUnit": "% of average weapon hit (avg(dmgMin,dmgMax) x dmgMult), single target",
+    "servantDmgAssumption": "skeleton 30% weapon every 1.3 s, scales with player hit (server-side, unverified)"
+  },
+  "skills": {
+    "bonebolt": {
+      "dmgPct": 206.25,
+      "splashPct": 62.5,
+      "radius": 1.8,
+      "range": 13,
+      "castSec": 0.58,
+      "cd": 0,
+      "cost": 0,
+      "essenceGain": "4 per cast that hits (Zb.hit[0]); +1 per extra target hit with nc_bonebolt R2 (max 4); +6 per monster dying within 12 m (any source)",
+      "dpsPerCastSec": 358.07,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "essence generator, LMB, cast scales dur/aps",
+      "useWhen": "filler: no other rule fires, or essence < reserve; aim at cluster centre (splash 1.8 m, 2.4 m with nc_thorns R1)",
+      "rankScaling": {
+        "base": "165% core / 50% splash r1.8",
+        "nc_bonebolt R1 (lvl>=3)": "x1.25 -> 206/62.5%",
+        "nc_bonebolt R2": "+1 essence per extra target (<=4)",
+        "nc_thorns R1 (lvl>=30)": "+15% dmg, radius 2.4",
+        "nc_thorns R2": "2 s ground: slow + 15%/s",
+        "nc_oath_plague (50)": "plague 25%/0.5s for 2 s on main target"
+      }
+    },
+    "blight": {
+      "dmgPct": 360,
+      "splashPct": 168,
+      "radius": 2.5,
+      "range": 12,
+      "castSec": 0.56,
+      "cd": 0,
+      "cost": 15,
+      "essenceGain": 0,
+      "dpsPerCastSec": 642.86,
+      "dmgPerEssence": 10.63,
+      "makesCorpse": true,
+      "utility": "rips 1 corpse from the living target (even bosses); RMB but cast = 0.7/aps (code uses /aps, NOT sqrt)",
+      "useWhen": "essence >= cost + reserve && (corpsesNear < 2 && (raise wanted || corpsex ready) || enemiesWithin2.5mOfTarget >= 2 || target is elite/boss)",
+      "rankScaling": {
+        "base": "300% / 140% splash, cost 20",
+        "nc_blight R1 (lvl>=6)": "cost 15, x1.2 -> 360/168%",
+        "nc_blight R2": "2 corpses on champion/rare/boss",
+        "nc_harvest keystone (24)": "cost 0, cd 3 s",
+        "nc_putrefy R1 (43)": "+1 corpse if target < 50% hp"
+      }
+    },
+    "raise": {
+      "dmgPct": 0,
+      "splashPct": 0,
+      "radius": 4.5,
+      "range": 14,
+      "castSec": 0.6,
+      "cd": 3,
+      "cost": 15,
+      "essenceGain": 0,
+      "dpsPerCastSec": null,
+      "dmgPerEssence": 92.32,
+      "makesCorpse": false,
+      "utility": "up to 2 corpses within 4.5 m -> skeletons (30% weapon every 1.3 s = 23.1%/s each, 28.8%/s with nc_lich), heal 2% life per corpse",
+      "useWhen": "skeletons < cap && corpsesWithin4.5mOfCursor >= 1 && essence >= 15 (top priority; 2 corpses ideal)",
+      "note": "dmgPerEssence assumes 2 skeletons living 30 s (assumption, lifetime is server-side)",
+      "rankScaling": {
+        "R1 (1)": "cap 4",
+        "R2 (lvl>=8)": "cap 5",
+        "R3 (lvl>=15)": "cap 6, hits slow 1.5 s",
+        "nc_bonelord 1/2": "+15/+30% servant dmg",
+        "nc_lich (14+)": "+25% servant speed, 3 essence per servant kill",
+        "nc_legion keystone": "+3 cap, -30% each"
+      }
+    },
+    "decrepify": {
+      "dmgPct": 0,
+      "splashPct": 0,
+      "radius": 4.5,
+      "range": 13,
+      "castSec": 0.6,
+      "cd": 16,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 0,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "8 s curse: -25% enemy dmg, slow 3 s, corpses last ~2x",
+      "useWhen": "off cd && (enemiesInRadius4.5 >= 3 || elite/boss in range || hp < 60%)",
+      "rankScaling": {
+        "R1 (10)": "-25%, 8 s",
+        "R2 (lvl>=17)": "-35%, 10 s",
+        "R3 (lvl>=24)": "15% fear 1 s per hit on cursed"
+      }
+    },
+    "corpsex": {
+      "dmgPct": 200,
+      "splashPct": 200,
+      "radius": 3.5,
+      "range": 14,
+      "castSec": 0.55,
+      "cd": 8,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 363.64,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "up to 3 corpses within 5 m of cursor each blow 200% in 3.5 m (a target within 3.5 m of k corpses takes k x 200%), heal 2%/corpse",
+      "useWhen": "off cd && corpsesWithin5mOfCursor >= 1 && enemiesWithin3.5mOfThoseCorpses >= 2 && (skeletons == cap || corpses > needed for raise); solo target: only if skeletons == cap",
+      "rankScaling": {
+        "R1 (6)": "3 corpses, blast 3.5 m",
+        "R2 (lvl>=13)": "4 corpses, blast 4.5 m",
+        "R3 (lvl>=20)": "plague 3 s, jumps to 2 neighbours on death",
+        "gravedigger gloves": "5 corpses, +4 essence each"
+      }
+    },
+    "fleshgolem": {
+      "dmgPct": 90,
+      "splashPct": 90,
+      "radius": 2.6,
+      "range": 0,
+      "castSec": 0.8,
+      "cd": 30,
+      "cost": 30,
+      "essenceGain": 0,
+      "dpsPerCastSec": null,
+      "dmgPerEssence": 90,
+      "makesCorpse": false,
+      "utility": "permanent golem, slam 90% weapon r2.6 every 2 s (45%/s per target), stun 0.4 s",
+      "useWhen": "no golem alive && essence >= cost (out of combat preferred: essence never decays)",
+      "note": "dmgPerEssence assumes golem lives 60 s (assumption)",
+      "rankScaling": {
+        "R1 (14)": "cost 30, 90%, stun 0.4",
+        "R2 (lvl>=21)": "cost 20, 108%, stun 0.8",
+        "R3 (lvl>=28)": "4 corpses when replaced"
+      }
+    },
+    "colossus": {
+      "dmgPct": 960,
+      "splashPct": 960,
+      "radius": 6,
+      "range": 10,
+      "castSec": 0.9,
+      "cd": 90,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 1066.67,
+      "dmgPerEssence": null,
+      "makesCorpse": true,
+      "utility": "ult: 3 slams x 320% r6 (1 s rise, 1.1 s apart), stun 1 s each, leaves 4 corpses",
+      "useWhen": "off cd && (enemiesInRadius6 >= 3 || boss/elite) ; follow with raise/corpsex on the 4 corpses",
+      "rankScaling": {
+        "R1 (19)": "3 slams, 4 corpses",
+        "R2 (lvl>=27)": "4 slams (1280%), 6 corpses"
+      }
+    },
+    "sacrifice": {
+      "dmgPct": 150,
+      "splashPct": 150,
+      "radius": 3,
+      "range": 0,
+      "castSec": 0.45,
+      "cd": 14,
+      "cost": 0,
+      "essenceGain": "2 per shard (per skeleton that hits)",
+      "dpsPerCastSec": 333.33,
+      "dmgPerEssence": null,
+      "makesCorpse": true,
+      "utility": "every skeleton bursts 150% r3 (1 hit per enemy), -25% skeleton endurance (worn ones become corpses)",
+      "useWhen": "off cd && enemiesWithin3mOfAnySkeleton >= 2 && skeletons >= 3",
+      "rankScaling": {
+        "R1 (36)": "150%",
+        "R2 (lvl>=43)": "+2% life per shard",
+        "R3 (lvl>=50)": "shards apply decrepify 4 s"
+      }
+    },
+    "agony": {
+      "dmgPct": 0,
+      "splashPct": 35,
+      "radius": 6,
+      "range": 14,
+      "castSec": 0.6,
+      "cd": 18,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": null,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "choice vs decrepify: 35% of damage taken by target hits enemies within 6 m, 6 s",
+      "useWhen": "not in plan (decrepify chosen)",
+      "rankScaling": {
+        "R2": "55%, 9 s",
+        "R3": "jumps on death"
+      }
+    },
+    "roll": {
+      "dmgPct": 0,
+      "splashPct": 0,
+      "radius": 2.6,
+      "range": 0,
+      "castSec": 0.6,
+      "cd": 4.5,
+      "cost": 0,
+      "essenceGain": 0,
+      "dpsPerCastSec": 0,
+      "dmgPerEssence": null,
+      "makesCorpse": false,
+      "utility": "0.6 s invulnerable, slows 2 s in 2.6 m, raises 1 corpse within 1.5 m for free",
+      "useWhen": "incoming telegraphed hit or hp < 40%; end next to a corpse when skeletons < cap",
+      "rankScaling": {
+        "nc_dodge R1 (6)": "2 charges",
+        "nc_dodge R2": "leaves 1 corpse",
+        "nc_torrent R1/R2 (36)": "80% + slow to crossed enemies / +0.25 s, 6 essence each (<=18)"
+      }
+    }
+  },
+  "essence": {
+    "valuePerPoint": 8.44,
+    "valueNote": "weapon% per essence spent on blight vs bonebolt, counting the essence the replaced bonebolt would have made",
+    "reserveRule": "essence never decays (only death empties it): bank out of combat. Keep 15 (one raise) in reserve while skeletons < cap; keep 30 (20 after golem R2) if golem is down; spend the rest on blight only when trigger met. With nc_hoard: never drop below 80+cost.",
+    "income": "bonebolt spam 6.94 essence/s at aps 1.25 (+6 per kill in 12 m, ~+2-4/s in packs) => ~9-11/s in pack combat, ~7/s single target"
+  },
+  "bestByCluster": {
+    "assumptions": "N enemies inside 1.8 m (all splash hit), corpsex with 2 corpses, sacrifice with 5 skeletons all in range, aps 1.25, lvl 9 ranks",
+    "N1": {
+      "dmgPerCastSec": {
+        "bonebolt": 358.07,
+        "blight": 642.86,
+        "corpsex_2corpses": 727.27,
+        "sacrifice_5skel": 333.33,
+        "colossus": 1066.67
+      },
+      "blightDmgPerEssence": 10.63,
+      "bestSpammable": "blight",
+      "bestOverall": "colossus",
+      "bestPerEssence": "raise (if below cap and corpses) > blight (10.63%/essence) ; free skills (corpsex, sacrifice, colossus) cost 0: always fire when trigger met"
+    },
+    "N2": {
+      "dmgPerCastSec": {
+        "bonebolt": 466.58,
+        "blight": 942.86,
+        "corpsex_2corpses": 1454.55,
+        "sacrifice_5skel": 666.67,
+        "colossus": 2133.33
+      },
+      "blightDmgPerEssence": 17.78,
+      "bestSpammable": "blight",
+      "bestOverall": "colossus",
+      "bestPerEssence": "raise (if below cap and corpses) > blight (17.78%/essence) ; free skills (corpsex, sacrifice, colossus) cost 0: always fire when trigger met"
+    },
+    "N3": {
+      "dmgPerCastSec": {
+        "bonebolt": 575.09,
+        "blight": 1242.86,
+        "corpsex_2corpses": 2181.82,
+        "sacrifice_5skel": 1000,
+        "colossus": 3200
+      },
+      "blightDmgPerEssence": 24.93,
+      "bestSpammable": "blight",
+      "bestOverall": "colossus",
+      "bestPerEssence": "raise (if below cap and corpses) > blight (24.93%/essence) ; free skills (corpsex, sacrifice, colossus) cost 0: always fire when trigger met"
+    },
+    "N5": {
+      "dmgPerCastSec": {
+        "bonebolt": 792.1,
+        "blight": 1842.86,
+        "corpsex_2corpses": 3636.36,
+        "sacrifice_5skel": 1666.67,
+        "colossus": 5333.33
+      },
+      "blightDmgPerEssence": 39.23,
+      "bestSpammable": "blight",
+      "bestOverall": "colossus",
+      "bestPerEssence": "raise (if below cap and corpses) > blight (39.23%/essence) ; free skills (corpsex, sacrifice, colossus) cost 0: always fire when trigger met"
+    },
+    "reading": "colossus (cd 90) > corpsex (cd 8, needs corpses) > blight > sacrifice/bonebolt per cast-second; among spammables blight beats bonebolt at every N (1.8x at N1, 2.3x at N5); per essence: raise (~92%/ess while below cap) > blight (10.6 / 17.8 / 24.9 / 39.2 % per essence for N=1/2/3/5)"
+  },
+  "gear": {
+    "formula": {
+      "hit": "avgHit = ((wMin+flatDmg)+(wMax+flatDmg))/2 ; item dmg already includes upgrade (Pg: x(1+Eg[up]/100))",
+      "dmgMult": "1 + (5*(lvl-1) + 0.5*pow + dmgPct)/100   (necro frame dmg 1.0)",
+      "aps": "weapon.aps * (1 + (atkSpd + 0.15*(lvl-1))/100 + 0.002*min(agi,300))",
+      "crit": "critF = 1 + min(60, 5+0.1*(lvl-1)+0.15*prec+crit)/100 * (50+1.5*fer+critDmg)/100",
+      "execute": "execF = 1 + 0.35*execute/100 (assumes ~35% of damage lands under 35% hp; ASSUMPTION) ; eliteDmg ~ +0.15*eliteDmg/100",
+      "essence": "gen = 1+(furyGen+0.5*(lvl-1)+0.5*wil)/100 ; income/s = (4*aps/0.72 + 2 kill)*gen ; surplus = income - 0.75 (raise upkeep)",
+      "dpsIndex": "dps = avgHit*dmgMult*critF*execF*(206.25*aps/0.72 + 8.44*surplus + 165)/100   [bonebolt spam scales with aps (dur/aps); 165%/s = 5 skeletons + corpsex, aps-independent]",
+      "life": "(150 + 22*(lvl-1) + 4*vit + life) * (1+lifePct/100) * 0.9",
+      "armor": "(5 + 2*(lvl-1) + itemBaseArmor + armorAffix(flat) + 2*tgh) * (1+armorPct_talents/100) * 0.85",
+      "reduction": "xI = min(0.75, armor/(armor + 25 + 14*lvl))",
+      "ehp": "life / (1-xI) / (1-min(40,dr)/100)",
+      "score": "dps * sqrt(ehp)  -> compare items by swapping them into the full stat sheet; higher wins",
+      "note": "affix 'armor' is FLAT armor (added before %), not percent. Necro spenders blight/bonebolt use dur/aps (code), not sqrt: low-aps 2H staves do NOT favor necro casts; they only favor aps-independent damage (skeletons, golem, corpsex, colossus)."
+    },
+    "weightsPctScorePerPoint_lvl9": {
+      "dmgPct": 0.7143,
+      "pow": 0.35710000000000003,
+      "atkSpd": 0.67,
+      "agi": 0.134,
+      "prec": 0.0725,
+      "crit": 0.48340000000000005,
+      "fer": 0.0993,
+      "critDmg": 0.0662,
+      "execute": 0.337,
+      "eliteDmg": 0.1444,
+      "furyGen": 0.1275,
+      "wil": 0.0637,
+      "flatDmg": 5.1282000000000005,
+      "vit": 0.4728,
+      "tgh": 0.3982,
+      "life": 0.1184,
+      "lifePct": 0.4338,
+      "armor": 0.1993,
+      "dr": 0.5038
+    },
+    "weightsNote": "% change of score per +1 of the stat, at lvl 9 with current weapon; flatDmg and dmgPct dominate, prec/critDmg/fer are weak until crit chance is higher",
+    "weaponBases": {
+      "bonewand": {
+        "dmg": [
+          6,
+          11
+        ],
+        "aps": 1.25
+      },
+      "deathstaff": {
+        "dmg": [
+          13,
+          21
+        ],
+        "aps": 0.9
+      },
+      "rule": "only bases with cls necromancer (Ap list); all other weapons are blocked"
+    },
+    "workedExample": {
+      "current": {
+        "item": "14-25 x1.25 bonewand, prec7 execute11 atkSpd6",
+        "dps": 183.39,
+        "ehp": 616,
+        "aps": 1.34,
+        "essencePerSec": 9.82,
+        "score": 4552.48,
+        "vsCurrent": "0%"
+      },
+      "colere_du_corbeau": {
+        "item": "20-32 x0.92, atkSpd5 furyGen14 execute8 dmgPct10",
+        "dps": 211.44,
+        "ehp": 616,
+        "aps": 0.98,
+        "essencePerSec": 8.77,
+        "score": 5248.92,
+        "vsCurrent": "15.3%",
+        "warning": "aps 0.92 matches no necro base (bonewand 1.25, deathstaff 0.9); 0.92 = firestaff (pyromancer) or greatsword (knight). Weapon base cls != necromancer cannot be equipped ($h rule). Check item.base first."
+      },
+      "baton_funeste_mortel": {
+        "item": "20-33 x0.9 deathstaff, critDmg22",
+        "dps": 186.11,
+        "ehp": 616,
+        "aps": 0.91,
+        "essencePerSec": 7.34,
+        "score": 4620.17,
+        "vsCurrent": "1.49%"
+      },
+      "boots": {
+        "A_arm11_armor22_agi6": {
+          "dps": 184.86,
+          "ehp": 747,
+          "aps": 1.36,
+          "essencePerSec": 9.91,
+          "score": 5051.02,
+          "vsCurrent": "10.95%"
+        },
+        "B_arm5_tgh3_vit4": {
+          "dps": 183.39,
+          "ehp": 719,
+          "aps": 1.34,
+          "essencePerSec": 9.82,
+          "score": 4916.43,
+          "vsCurrent": "7.99%"
+        },
+        "winner": "A",
+        "note": "vsCurrent here = vs wearing no boots (other gear armor assumed 20)"
+      }
+    }
+  },
+  "talentPlanReview": {
+    "verdict": "Mostly sound (army first, decrepify+golem choices fine). 4 swaps worth doing; row unlocks are Tf=[1,3,6,10,14,19,24,30,36,43,50], active rank N needs row level + 7*(N-1) (ult +8).",
+    "swaps": [
+      {
+        "level": 13,
+        "from": "nc_marrow",
+        "to": "corpsex (R2, unlocked at 13)",
+        "why": "4 corpses + blast 4.5 m = +33% corpsex damage and wider; marrow R1 is only +4% of your own hits"
+      },
+      {
+        "level": 20,
+        "from": "nc_marrow",
+        "to": "nc_hoard",
+        "why": "+20% dmg for you AND servants while essence > 80; essence never decays, so bank it (raise at >=95). One point beats marrow's 3 points (12%, self only)"
+      },
+      {
+        "level": 27,
+        "from": "corpsex (moved to 13)",
+        "to": "colossus R2",
+        "why": "4th slam (+33% ult = 1280%) and 6 corpses; plan never takes colossus R2"
+      },
+      {
+        "level": 24,
+        "from": "nc_bonepact",
+        "to": "nc_harvest",
+        "why": "blight free (3 s cd): +1 corpse / 3 s for raise+corpsex and all essence goes to the army; bot has 0 deaths, so trade the 20% DR for kill speed. Revert if deaths appear"
+      },
+      {
+        "level": 47,
+        "from": "nc_thirst x2",
+        "to": "nc_marrow R2/R3 (the two points removed above)",
+        "why": "+10% essence is worth ~1.3% score (furyGen weight 0.13/pt) vs +8% dmg"
+      }
+    ],
+    "keep": "raise R2@8 R3@15, nc_bonelord@11-12, fleshgolem@14 (R2@21 cost 20), nc_lich@16, decrepify R2@17, colossus@19"
+  },
+  "potion": {
+    "instantPct": 35,
+    "hotPct": 20,
+    "hotSec": 3,
+    "cdSec": 1.5,
+    "source": "client potion tooltip index.pretty.js L93399: Rend 35 % de la vie instantanément puis 20 % en 3 s, recharge 1,5 s"
+  }
+}

@@ -1,0 +1,363 @@
+{
+  "talents": [
+    {
+      "level": 1,
+      "id": "raise",
+      "why": "Squelettes : encaissent via le Lien des os, soignent 2 % par cadavre relevé"
+    },
+    {
+      "level": 2,
+      "id": "nc_rot",
+      "why": "+5 % vie, survie contre les meutes de loups"
+    },
+    {
+      "level": 3,
+      "id": "nc_bonebolt",
+      "why": "+25 % dégâts d'Épines d'os, vitesse de kill"
+    },
+    {
+      "level": 4,
+      "id": "nc_bonebolt",
+      "why": "Essence rendue par épine sur plusieurs ennemis (meutes)"
+    },
+    {
+      "level": 5,
+      "id": "nc_rot",
+      "why": "+10 % vie"
+    },
+    {
+      "level": 6,
+      "id": "corpsex",
+      "why": "Zone sur cadavres + soin 2 % par cadavre"
+    },
+    {
+      "level": 7,
+      "id": "nc_blight",
+      "why": "Flétrissure coûte 15 au lieu de 20, +20 % dégâts"
+    },
+    {
+      "level": 8,
+      "id": "raise",
+      "why": "Rang 2 : un squelette de plus (5)"
+    },
+    {
+      "level": 9,
+      "id": "nc_rot",
+      "why": "+15 % vie"
+    },
+    {
+      "level": 10,
+      "id": "decrepify",
+      "why": "Choix : ennemis maudits -25 % dégâts et ralentis, passif à déclencher sur meute"
+    },
+    {
+      "level": 11,
+      "id": "nc_bonelord",
+      "why": "+15 % dégâts des serviteurs"
+    },
+    {
+      "level": 12,
+      "id": "nc_bonelord",
+      "why": "+30 % dégâts des serviteurs"
+    },
+    {
+      "level": 13,
+      "id": "corpsex",
+      "why": "R2 : +33 % dégâts et zone élargie (analyse)"
+    },
+    {
+      "level": 14,
+      "id": "fleshgolem",
+      "why": "Choix : golem permanent, compte dans la Légion, étourdit en zone"
+    },
+    {
+      "level": 15,
+      "id": "raise",
+      "why": "Rang 3 : 6 squelettes, coups ralentissent : Légion III possible"
+    },
+    {
+      "level": 16,
+      "id": "nc_lich",
+      "why": "Serviteurs +25 % vitesse, 3 essence par kill de serviteur"
+    },
+    {
+      "level": 17,
+      "id": "decrepify",
+      "why": "Rang 2 : -35 % dégâts ennemis, +2 s"
+    },
+    {
+      "level": 18,
+      "id": "nc_marrow",
+      "why": "+8 % dégâts"
+    },
+    {
+      "level": 19,
+      "id": "colossus",
+      "why": "Ultime : zone 320 %, étourdit 1 s, laisse 4 cadavres"
+    },
+    {
+      "level": 20,
+      "id": "nc_hoard",
+      "why": "+20 % dégâts (toi et serviteurs) au-dessus de 80 essence"
+    },
+    {
+      "level": 21,
+      "id": "fleshgolem",
+      "why": "Rang 2 : +20 % dégâts, étourdit 0,8 s, coûte 20"
+    },
+    {
+      "level": 22,
+      "id": "nc_ivory",
+      "why": "+8 % armure"
+    },
+    {
+      "level": 23,
+      "id": "nc_ivory",
+      "why": "+16 % armure"
+    },
+    {
+      "level": 24,
+      "id": "nc_bonepact",
+      "why": "Clé de voûte : -4 % dégâts subis par serviteur debout (20 % max), toujours actif"
+    },
+    {
+      "level": 25,
+      "id": "decrepify",
+      "why": "Rang 3 : chance de terrifier les maudits"
+    },
+    {
+      "level": 26,
+      "id": "nc_ivory",
+      "why": "+24 % armure"
+    },
+    {
+      "level": 27,
+      "id": "colossus",
+      "why": "Colosse R2 : 4e frappe, 6 cadavres"
+    },
+    {
+      "level": 28,
+      "id": "fleshgolem",
+      "why": "Rang 3 : le golem tombé laisse 4 cadavres"
+    },
+    {
+      "level": 29,
+      "id": "nc_rite",
+      "why": "-4 % temps de recharge"
+    },
+    {
+      "level": 30,
+      "id": "nc_phylactery",
+      "why": "Coup mortel absorbé par l'armée en Légion III, toutes les 45 s"
+    },
+    {
+      "level": 31,
+      "id": "nc_dread",
+      "why": "+4 % dégâts"
+    },
+    {
+      "level": 32,
+      "id": "nc_dread",
+      "why": "+8 % dégâts"
+    },
+    {
+      "level": 33,
+      "id": "nc_dread",
+      "why": "+12 % dégâts"
+    },
+    {
+      "level": 34,
+      "id": "nc_thorns",
+      "why": "Épines +0,6 m de zone, +15 % dégâts"
+    },
+    {
+      "level": 35,
+      "id": "nc_thorns",
+      "why": "Sol hérissé qui ralentit et pique, passif"
+    },
+    {
+      "level": 36,
+      "id": "sacrifice",
+      "why": "Zone 150 % autour de chaque squelette, rend de l'essence"
+    },
+    {
+      "level": 37,
+      "id": "nc_endure",
+      "why": "-2 % dégâts subis"
+    },
+    {
+      "level": 38,
+      "id": "nc_endure",
+      "why": "-4 % dégâts subis"
+    },
+    {
+      "level": 39,
+      "id": "nc_endure",
+      "why": "-6 % dégâts subis"
+    },
+    {
+      "level": 40,
+      "id": "corpsex",
+      "why": "Rang 3 : peste qui saute de mort en mort dans la meute"
+    },
+    {
+      "level": 41,
+      "id": "nc_rite",
+      "why": "-8 % temps de recharge"
+    },
+    {
+      "level": 42,
+      "id": "nc_rite",
+      "why": "-12 % temps de recharge"
+    },
+    {
+      "level": 43,
+      "id": "sacrifice",
+      "why": "Rang 2 : chaque éclat rend 2 % de vie"
+    },
+    {
+      "level": 44,
+      "id": "nc_glass",
+      "why": "+2 % critique"
+    },
+    {
+      "level": 45,
+      "id": "nc_glass",
+      "why": "+4 % critique"
+    },
+    {
+      "level": 46,
+      "id": "nc_glass",
+      "why": "+6 % critique"
+    },
+    {
+      "level": 47,
+      "id": "nc_marrow",
+      "why": "marrow R2"
+    },
+    {
+      "level": 48,
+      "id": "nc_marrow",
+      "why": "marrow R3"
+    },
+    {
+      "level": 49,
+      "id": "nc_shards",
+      "why": "Serviteur usé qui tombe : 5 essence + éclats en zone"
+    },
+    {
+      "level": 50,
+      "id": "nc_oath_grave",
+      "why": "Serment : chaque squelette se relève une fois, l'armée reste pleine (Pacte d'os, Légion III)"
+    }
+  ],
+  "attributes": [
+    {
+      "from": 2,
+      "to": 9,
+      "split": {
+        "vit": 3,
+        "tgh": 2
+      }
+    },
+    {
+      "from": 10,
+      "to": 29,
+      "split": {
+        "vit": 2,
+        "tgh": 2,
+        "pow": 1
+      }
+    },
+    {
+      "from": 30,
+      "to": 50,
+      "split": {
+        "vit": 2,
+        "tgh": 1,
+        "pow": 2
+      }
+    }
+  ],
+  "bar": [
+    {
+      "from": 1,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 6,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        "corpsex",
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 10,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        "corpsex",
+        "decrepify",
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "from": 14,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        "corpsex",
+        "decrepify",
+        "fleshgolem",
+        null,
+        null
+      ]
+    },
+    {
+      "from": 19,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        "corpsex",
+        "decrepify",
+        "fleshgolem",
+        "colossus",
+        null
+      ]
+    },
+    {
+      "from": 36,
+      "l": [
+        "bonebolt",
+        "blight",
+        "raise",
+        "corpsex",
+        "decrepify",
+        "fleshgolem",
+        "colossus",
+        "sacrifice"
+      ]
+    }
+  ],
+  "notes": "Priorité : raise > fleshgolem > decrepify > colossus > sacrifice > corpsex > blight > bonebolt. raise (15 essence) : seulement si squelettes < cap (4, 5 au niv 8, 6 au niv 15), viser le cadavre le plus proche (prend 2 cadavres dans 4,5 m du curseur) ; garder 15 essence en réserve tant que l'armée n'est pas pleine. blight : viser l'ennemi le plus proche (il arrache un cadavre au vivant, donc nourrit raise) ; coûte 15 dès le niv 7, donc seuil essence >= 15, ou >= 30 si l'armée n'est pas pleine. corpsex : seulement quand l'armée est pleine (sinon les cadavres servent à raise), si 2+ ennemis à 3,5 m d'un cadavre, viser ce cadavre. decrepify : 2+ ennemis à moins de 6 m, viser le centre de la meute (rayon 4,5 m). fleshgolem : permanent, NE PAS le relancer à chaque recharge (il remplace l'ancien et gaspille 30/20 essence) : lancer seulement si aucun golem vivant, viser soi. colossus : 3+ ennemis, viser le centre de la meute à moins de 10 m (rayon 6). sacrifice : 3+ squelettes et 2+ ennemis au contact des squelettes, pas de visée (autour de chaque squelette) ; chaque usage use 25 % de leur endurance, puis raise les relève. Après chaque level up : learnTalent(id) puis envoyer {t:'bar', l:[...]} explicitement (le client place la nouvelle compétence dans son slot par défaut, mais seulement via la barre HUD). Esquive : la compétence s'appelle 'roll' dans les cds, pas 'dislocate'."
+}

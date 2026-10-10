@@ -1,0 +1,2855 @@
+{
+  "knight": [
+    {
+      "id": "charge",
+      "name": "Charge",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Charge. R2: Le premier ennemi touché est étourdi 1,5 s. R3: Si elle touche 3 ennemis ou plus, sa recharge tombe à 3 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "kn_might",
+      "name": "Puissance",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_hide",
+      "name": "Cuir épais",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie.; R2: +10 % de vie.; R3: +15 % de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_slash",
+      "name": "Estoc perçant",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: L'estoc de Frappe inflige +30 % de dégâts et sa ligne gagne 1 m. R2: L'estoc étourdit les monstres 0,5 s (pas les seigneurs).",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_faith",
+      "name": "Foi ardente",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: La Ferveur ne retombe plus hors combat : vos sceaux vous attendent. R2: Rempart de foi passe à -8,5 % de dégâts subis par sceau (au lieu de 7 %).",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_plate",
+      "name": "Maître des plates",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +8 % d'armure.; R2: +16 % d'armure.; R3: +24 % d'armure.",
+      "solo": "survie"
+    },
+    {
+      "id": "warcry",
+      "name": "Cri de guerre",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Cri de guerre. R2: Dure 3 s de plus et soigne 10 % de vie de plus. R3: Repousse violemment les ennemis proches (150 % des dégâts de l'arme) et grave 2 sceaux de Ferveur.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_cleave",
+      "name": "Fendoir du bourreau",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Fendoir inflige le double aux ennemis sous 35 % de leur vie. R2: Un Fendoir lancé juste après l'estoc de Frappe (0,8 s) ne coûte aucun sceau.",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_dodge",
+      "name": "Garde d'acier",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Les coups que votre garde bloque coûtent 40 % de Ferveur en moins. R2: Contre-garde : la garde baissée, votre Frappe suivante (1 s) est un estoc ; +50 % de dégâts si la garde a réussi une parade parfaite.",
+      "solo": "survie"
+    },
+    {
+      "id": "riposte",
+      "name": "Riposte",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Riposte. R2: Chaque coup paré vous soigne de 4 % de votre vie. R3: La contre-attaque frappe tout autour de vous et étourdit 1,5 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "guard",
+      "name": "Garde du rempart",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Garde du rempart. R2: Étourdit 1 s les monstres provoqués et soigne 2 % de la vie par seconde. R3: Les alliés à 8 m subissent aussi -20 % de dégâts tant qu'elle dure.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_unbreak",
+      "name": "Inébranlable",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "R1: Un coup mortel vous laisse à 25 % de vie au lieu de vous abattre, une fois toutes les 120 s. R2: Une fois toutes les 90 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_tempo",
+      "name": "Tempo de guerre",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l'esquive).; R2: -8 % sur les temps de recharge (sauf l'esquive).; R3: -12 % sur les temps de recharge (sauf l'esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "chain",
+      "name": "Chaîne du geôlier",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Chaîne du geôlier. R2: La victime arrive étourdie 1 s, et la première grave un sceau de Ferveur. R3: La chaîne traverse et ramène jusqu'à 3 ennemis alignés.",
+      "solo": "controle"
+    },
+    {
+      "id": "quake",
+      "name": "Séisme",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Séisme. R2: Rayon +30 %, étourdit 0,5 s de plus. R3: Dépense tous vos sceaux : +50 % de dégâts par sceau.",
+      "solo": "zone"
+    },
+    {
+      "id": "kn_butcher",
+      "name": "Instinct du boucher",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_massacre",
+      "name": "Massacre",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Chaque ennemi que vous achevez augmente vos dégâts de 3 % pendant 6 s, jusqu'à 10 fois.",
+      "solo": "degats"
+    },
+    {
+      "id": "judgment",
+      "name": "Jugement de l'aube",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence : Jugement de l'aube. (ultime) R2: Dépense tous vos sceaux : +25 % de dégâts et +5 % de soin par sceau.",
+      "solo": "zone"
+    },
+    {
+      "id": "kn_vow",
+      "name": "Vœu du gardien",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Un coup reçu de plus de 15 % de votre vie grave un sceau de Ferveur.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_swift",
+      "name": "Pas du conquérant",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: +3 % de vitesse de déplacement.; R2: +6 % de vitesse de déplacement.",
+      "solo": "utilite"
+    },
+    {
+      "id": "kn_bulwark",
+      "name": "Bastion vivant",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Rempart de foi protège aussi les alliés à 8 m, à moitié.",
+      "solo": "utilite"
+    },
+    {
+      "id": "kn_crusader",
+      "name": "Croisé",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Chaque sceau détenu donne +5 % de dégâts, au lieu de réduire les dégâts subis.",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_banner",
+      "name": "Porte-étendard",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Requiert Cri de guerre. Cri de guerre plante aussi la Bannière de ralliement sous vous (10 s, 13 s dès le palier II du Cri) : -15 % de dégâts subis, de la vie et de la ressource pour les alliés dedans.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_lance",
+      "name": "Estoc du croisé",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: L'estoc porte 1,5 m plus loin, et chaque ennemi transpercé après le premier subit +25 % de dégâts. R2: Un estoc qui touche 3 ennemis ou plus grave un second sceau.",
+      "solo": "zone"
+    },
+    {
+      "id": "kn_sanctum",
+      "name": "Bastion consacré",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "En Bastion, vous régénérez 1,5 % de votre vie par seconde, et aucun coup ne vous ôte plus de 15 % de votre vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_valor",
+      "name": "Vaillance",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "reprisal",
+      "name": "Représailles",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Représailles. R2: Vous regagnez en vie 30 % des dégâts rendus. R3: Une réserve de 4 coups ou plus grave un sceau et étourdit 1,5 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_endure",
+      "name": "Endurance",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis.; R2: -4 % de dégâts subis.; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_aegis",
+      "name": "Égide",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: La garde levée abrite les alliés derrière vous (4 m) : les coups qui viennent de face leur font -50 % de dégâts. R2: La première parade parfaite de chaque levée lance une onde devant vous : 160 % des dégâts de l'arme dans un cône de 5 m, qui repousse.",
+      "solo": "zone"
+    },
+    {
+      "id": "kn_verdict",
+      "name": "Fendoir du jugement",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Fendoir dépense un second sceau s'il en reste un : +50 % de dégâts. R2: Fendoir étourdit 0,8 s et ralentit de moitié pendant 3 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "kn_zeal",
+      "name": "Zèle",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Chaque sceau que Fendoir, Séisme ou le Jugement dépense donne +5 % de dégâts pendant 6 s (4 fois au plus).",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_precision",
+      "name": "Précision",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "kn_oath_iron",
+      "name": "Serment de fer",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Votre garde couvre tout autour de vous, mais chaque coup bloqué coûte +50 % de Ferveur.",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_oath_dawn",
+      "name": "Serment de l'aube",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Une parade parfaite vous soigne de 6 % de votre vie, et les alliés à 8 m de 3 % de la leur (une fois toutes les 2 s).",
+      "solo": "survie"
+    },
+    {
+      "id": "kn_oath_crusade",
+      "name": "Serment de croisade",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "À 4 sceaux, Frappe n'a plus de taille : chaque coup est un estoc. Seul le premier de chaque seconde grave un sceau.",
+      "solo": "degats"
+    }
+  ],
+  "ranger": [
+    {
+      "id": "trap",
+      "name": "Piège à mâchoires",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Piège à mâchoires (300 % des dégâts de l'arme, immobilise 2 s); R2: deux pièges posés à la fois; R3: le piège explose : tout ce qui est à 4 m est immobilisé 2 s et subit 150 % des dégâts de l'arme.",
+      "solo": "controle"
+    },
+    {
+      "id": "rg_aim",
+      "name": "Visée",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_hide",
+      "name": "Peau tannée",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie; R2: +10 % de vie; R3: +15 % de vie",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_shot",
+      "name": "Pointes barbelées",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Tir bandé inflige +28 % contre une cible immobilisée ou étourdie; R2: un Tir bandé critique rend 4 de concentration.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_calm",
+      "name": "Calme intérieur",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: un coup reçu ne fait plus perdre que 10 de concentration (au lieu de 15); R2: 5.",
+      "solo": "utilite"
+    },
+    {
+      "id": "rg_swift",
+      "name": "Pied léger",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +3 % de vitesse de déplacement; R2: +6 % de vitesse de déplacement; R3: +9 % de vitesse de déplacement",
+      "solo": "utilite"
+    },
+    {
+      "id": "vault",
+      "name": "Bond de retraite",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Bond de retraite (saut arrière de 7 m invulnérable, 3 flèches à 100 % des dégâts de l'arme); R2: cinq flèches au lieu de trois; R3: rend une charge d'esquive et 20 de concentration.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_pierce",
+      "name": "Flèche lestée",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Flèche perforante coûte 5 concentration de moins et inflige +20 % de dégâts; R2: ce qu'elle traverse subit +11 % de dégâts pendant 4 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_dodge",
+      "name": "Pas de danse",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: une troisième charge de pas chassé (chacune se recharge en 2,6 s); R2: après un pas chassé, le Tir bandé suivant (dans les 1,5 s) part déjà bandé à moitié.",
+      "solo": "survie"
+    },
+    {
+      "id": "concuss",
+      "name": "Flèche commotionnante",
+      "branch": "Éveil - groupe c",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Flèche commotionnante (180 % des dégâts de l'arme, étourdit 1,5 s, onde de choc qui repousse à 60 %); R2: l'onde étourdit 0,75 s ceux qu'elle repousse; R3: la cible est marquée 6 s : +25 % de dégâts subis.",
+      "solo": "controle"
+    },
+    {
+      "id": "rain",
+      "name": "Pluie de flèches",
+      "branch": "Éveil - groupe c",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Pluie de flèches (1,5 s : 6 x 150 % des dégâts de l'arme en zone); R2: rayon +30 %; R3: 2 vagues de plus, et la zone ralentit les ennemis.",
+      "solo": "zone"
+    },
+    {
+      "id": "rg_survivor",
+      "name": "Instinct de survie",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 1,
+      "desc": "Sous 35 % de vie : -30 % de dégâts subis et régénération triplée.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_eye",
+      "name": "Œil de faucon",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: +2 %; R2: +4 %; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "hawk",
+      "name": "Faucon de chasse",
+      "branch": "Éveil - groupe d",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Faucon de chasse (15 s, pique toutes les 1,2 s pour 42 % des dégâts de l'arme); R2: ses piqués étourdissent 0,35 s; R3: deux faucons.",
+      "solo": "degats"
+    },
+    {
+      "id": "salve",
+      "name": "Baume de la sylve",
+      "branch": "Éveil - groupe d",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Baume de la sylve (alliés à 5 m : 10 % de vie aussitôt, puis 4 %/s pendant 5 s, lavés du poison); R2: soigne 25 % de plus; R3: la brume dure 3 s de plus et réduit de 15 % les dégâts subis dedans.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_deadly",
+      "name": "Coup mortel",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +12 %; R2: +24 %; R3: +36 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_deadeye",
+      "name": "Œil de l'aigle",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Tir bandé traverse deux ennemis de plus. +10 % de vitesse d'attaque.",
+      "solo": "zone"
+    },
+    {
+      "id": "hunt",
+      "name": "Chasse sauvage",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Ultime : 8 s, compétences à moitié prix en concentration, Tir bandé décoche 3 flèches en éventail, +25 % de vitesse; R2: dure 3 s de plus, et les coups reçus ne font plus perdre de concentration pendant la Chasse.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_focus",
+      "name": "Esprit clair",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Chaque palier de l'Œil de la chasseuse s'ouvre 10 points plus bas (25, 55, 85).",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_tempo",
+      "name": "Rythme",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: -4 %; R2: -8 %; R3: -12 % sur les temps de recharge (sauf l'esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "rg_sniper",
+      "name": "Embusquée",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : immobile depuis 1 s : +21 % de dégâts, et le premier coup reçu ne brise pas votre concentration.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_wind",
+      "name": "Fille du vent",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : chaque pas chassé rend 8 de concentration; la Flèche perforante qui suit un pas chassé (1,5 s) est gratuite, au plus une fois toutes les 3 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_beast",
+      "name": "Maîtresse des bêtes",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte (requiert Faucon de chasse) : le Faucon reste avec vous jusqu'à votre mort, de carte en carte, mais frappe à 60 %.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_draw",
+      "name": "Corde tendue",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: la pleine tension vient 7 % plus vite; R2: une flèche lourde expose ce qu'elle frappe : +11 % de dégâts subis pendant 4 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_hawkeye",
+      "name": "Œil absolu",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "L'Œil absolu s'ouvre à 90 de concentration (80 avec Esprit clair); tant qu'il est ouvert, l'arc se bande 10 % plus vite.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_keen",
+      "name": "Pointe fine",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +10 %; R2: +20 %; R3: +30 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "scatter",
+      "name": "Flèche éclatée",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Flèche éclatée (150 % des dégâts de l'arme à la première cible, puis 5 éclats en éventail sur 7 m à 35 % chacun); R2: 7 éclats au lieu de 5; R3: les éclats exposent : +11 % de dégâts subis pendant 4 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "rg_endure",
+      "name": "Endurance",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 %; R2: -4 %; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_feint",
+      "name": "Feinte",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: un pas chassé qui évite un coup rend sa charge, au plus une fois toutes les 4 s; R2: les monstres traversés d'un pas chassé sont ralentis de 50 % pendant 2 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "rg_twin",
+      "name": "Perforante affûtée",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Flèche perforante inflige +3 % par palier de l'Œil ouvert au tir (+9 % à l'Œil absolu); R2: à l'Œil absolu, Flèche perforante ne coûte rien, une fois toutes les 6 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_wild",
+      "name": "Sang sauvage",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Chaque pas chassé donne +8 % de dégâts pendant 4 s (3 fois au plus).",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_quick",
+      "name": "Main leste",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +4 %; R2: +8 %; R3: +12 % de vitesse d'attaque.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_oath_ghost",
+      "name": "Serment du fantôme",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : à l'Œil absolu, les coups reçus ne brisent plus la concentration; mais elle s'écoule de 3 par seconde tant qu'il reste ouvert.",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_oath_storm",
+      "name": "Serment de l'orage",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : Tir bandé ne se bande plus : chaque flèche part rapide, mais il en décoche deux côte à côte (75 % des dégâts de l'arme chacune; une cible n'en prend qu'une).",
+      "solo": "degats"
+    },
+    {
+      "id": "rg_oath_hunt",
+      "name": "Serment de la traque",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : une flèche lourde marque sa cible 6 s : +3 % de vos dégâts subis, et sa mort rend 20 de concentration.",
+      "solo": "utilite"
+    }
+  ],
+  "reaper": [
+    {
+      "id": "souldash",
+      "name": "Ruée spectrale",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : traverse les rangs ennemis jusqu'au curseur, invulnérable, 280 % des dégâts de l'arme à tout ce que vous fendez; R2: Le Trépas fauche à 20 % les ennemis qu'elle traverse; R3: Deux charges.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_edge",
+      "name": "Fil de la faux",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_bone",
+      "name": "Os durcis",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +8 % d’armure.; R2: +16 % d’armure.; R3: +24 % d’armure.",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_reap",
+      "name": "Moisson sanglante",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Le fil de la faux commence 0,4 m plus près et porte 0,5 m plus loin; R2: Ce que le manche touche est repoussé de 0,8 m, au bout de la faux.",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_harvester",
+      "name": "Moissonneur",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "Le seuil du Trépas (exécution) monte de 3 % par rang (R1: sous 17 % de vie sans âmes; R2: sous 20 %).",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_shroud",
+      "name": "Suaire",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie.; R2: +10 % de vie.; R3: +15 % de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "doom",
+      "name": "Marque du trépas",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : maudit les ennemis sous le curseur (3,5 m) pendant 8 s, 75 % des dégâts de l'arme; un marqué qui meurt explose (150 % autour) et rend 6 âmes; R2: Rayon +1 m, et chaque mort marquée rend 2 âmes de plus; R3: L'explosion d'un marqué marque ceux qu'elle touche.",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_harvest",
+      "name": "Grande moisson",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Moisson coûte 10 âmes de moins; R2: Moisson dépense toutes vos âmes au-delà de son prix : +5 % de dégâts par âme.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_dodge",
+      "name": "Ombre fugace",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Une seconde charge d'esquive (chacune se recharge en 4,5 s); R2: L'ombre laissée au départ d'un Passe-mort fauche autour d'elle (80 % des dégâts de l'arme, 2,5 m).",
+      "solo": "survie"
+    },
+    {
+      "id": "knell",
+      "name": "Glas funèbre",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : cercle de faux spectrales autour de vous, 320 % des dégâts de l'arme, terrifie 1 s puis ralentit 3 s; R2: Rayon +15 %, la peur dure 0,5 s de plus; R3: Les terrifiés subissent +20 % de dégâts pendant 4 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "graves",
+      "name": "Tombes ouvertes",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : des mains d'outre-tombe jaillissent sous le curseur, 400 % des dégâts de l'arme en zone et immobilisent 1,5 s; R2: Zone +30 %; R3: La terre reste ouverte 3 s (ralentit) ; +2 âmes par mort dedans.",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_feast",
+      "name": "Festin d’âmes",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "Un ennemi fauché par le Trépas vous soigne de 2 % de la vie par rang (R1: 2 %; R2: 4 %).",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_tempo",
+      "name": "Cadence funèbre",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l’esquive).; R2: -8 % sur les temps de recharge (sauf l’esquive).; R3: -12 % sur les temps de recharge (sauf l’esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "wraithform",
+      "name": "Forme spectrale",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : pendant 5 s, -50 % de dégâts subis et vos coups vous soignent de 4 % des dégâts infligés; R2: Dure 2 s de plus et terrifie (1,2 s) les monstres à 7 m; R3: Se déclenche seule sous 30 % de vie, une fois toutes les 60 s : 3 s de forme spectrale, sans la terreur.",
+      "solo": "survie"
+    },
+    {
+      "id": "siphon",
+      "name": "Siphon d’âmes",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : pendant 2,4 s, draine jusqu'à 4 ennemis à 9 m (40 % des dégâts de l'arme toutes les 0,3 s, ralentis), 30 % des dégâts vous soignent; R2: Jusqu'à 6 liens; R3: Chaque lien tenu jusqu'au bout rend 10 âmes.",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_eye",
+      "name": "Œil de la mort",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_angel",
+      "name": "Ange de la mort",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Le Trépas fauche les rares et les champions au seuil plein, dès le premier palier d'âmes (jamais les seigneurs).",
+      "solo": "degats"
+    },
+    {
+      "id": "requiem",
+      "name": "Requiem",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence (ultime) : vous vous élevez, invulnérable, 4 vagues de faux à 9 m (250 % des dégâts de l'arme chacune, 2 âmes par ennemi touché), la dernière terrifie 2 s; R2: Ses vagues fauchent à 25 % (Trépas élargi).",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_cruel",
+      "name": "Tranchant funeste",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: +12 % de dégâts critiques.; R2: +24 % de dégâts critiques.; R3: +36 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_hunger",
+      "name": "Faim des morts",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "+2 âmes par mort à 10 m de vous.",
+      "solo": "utilite"
+    },
+    {
+      "id": "rp_eternal",
+      "name": "Moisson éternelle",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "À 100 âmes, votre Fauchage suivant est une Moisson gratuite qui les dépense toutes : +100 % de dégâts, et Grande moisson compte chacune.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_cortege",
+      "name": "Cortège",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Un ennemi fauché par le Trépas se relève 6 s à vos côtés en faucheur spectral (3 au plus).",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_bell",
+      "name": "Glas éternel",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Chaque Trépas sonne : les monstres à 3 m de la victime sont terrifiés 0,5 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "rp_whet",
+      "name": "Affûtage",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: Les coups du fil de la faux infligent +30 % de dégâts critiques; R2: Une passe qui prend 3 ennemis ou plus au fil vous rend 4 âmes.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_fullscythe",
+      "name": "Faux pleine",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "Au quatrième palier d'âmes, chaque passe de Fauchage libère une lame d'âme qui file 6 m devant vous : 80 % des dégâts de l'arme à tout ce qu'elle traverse.",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_keen",
+      "name": "Lame funeste",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +10 % de dégâts critiques.; R2: +20 % de dégâts critiques.; R3: +30 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "phantom",
+      "name": "Faux fantôme",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : lance le double spectral de votre faux, il file 10 m (140 % des dégâts de l'arme) puis revient et frappe encore, le Trépas fauche aux deux passages; R2: Au bout de sa course, elle tournoie 1 s : 50 % des dégâts de l'arme toutes les 0,25 s à 1,4 m; R3: Chaque ennemi qu'elle achève vous rend 6 âmes de plus.",
+      "solo": "zone"
+    },
+    {
+      "id": "rp_endure",
+      "name": "Endurance",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis.; R2: -4 % de dégâts subis.; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_veil",
+      "name": "Voile de l’au-delà",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: Un Passe-mort à travers un ennemi marqué ou sous 50 % de sa vie vous rend sa charge, une fois toutes les 5 s; R2: Votre Fauchage fauche le monstre traversé au double du seuil du Trépas.",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_reaping",
+      "name": "Moisson des âmes",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Moisson tire les ennemis jusqu'au fil de la faux (ils s'arrêtent à 2,6 m) et inflige +20 % de dégâts; R2: Chaque ennemi que le coup de Moisson achève vous rend 6 âmes de plus.",
+      "solo": "controle"
+    },
+    {
+      "id": "rp_macabre",
+      "name": "Danse macabre",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Après un Passe-mort, +25 % de dégâts pendant 3 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_quick",
+      "name": "Glas pressé",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: -3 % sur les temps de recharge (sauf l’esquive).; R2: -6 % sur les temps de recharge (sauf l’esquive).; R3: -9 % sur les temps de recharge (sauf l’esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "rp_oath_ferry",
+      "name": "Serment du nocher",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "À 100 âmes, Moisson ne coûte rien pendant 5 s ; puis vos âmes tombent à 0.",
+      "solo": "degats"
+    },
+    {
+      "id": "rp_oath_void",
+      "name": "Serment du vide",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Passe-mort gagne 2 charges, mais chaque passe coûte 10 âmes (refusée en dessous).",
+      "solo": "survie"
+    },
+    {
+      "id": "rp_oath_toll",
+      "name": "Serment du glas",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Chaque Trépas ralentit de 50 % (2 s) et expose (+15 % de dégâts subis, 4 s) les monstres à 4 m de sa victime.",
+      "solo": "controle"
+    }
+  ],
+  "berserker": [
+    {
+      "id": "leap",
+      "name": "Bond du boucher",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : bondit sur le monstre visé (10 m max), 260 % des dégâts de l'arme, étourdi 1,5 s, saignement 160 % en 4 s; monstres à 6 m traînés et sonnés 0,6 s; pendant 6 s chaque monstre à 4 m réduit les dégâts subis de 10 % (40 % max), recharge 14 s; R2: +40 % de dégâts, le cœur de la meute dure 9 s au lieu de 6 s; R3: chaque monstre traîné rend 15 rage (45 au plus).",
+      "solo": "controle"
+    },
+    {
+      "id": "bz_edge",
+      "name": "Fil sanglant",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_hide",
+      "name": "Peau de bête",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie; R2: +10 % de vie; R3: +15 % de vie",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_hack",
+      "name": "Haches affûtées",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: l'Élan monte jusqu'à 8 Taillades enchaînées au lieu de 6 (+56 % de vitesse); R2: chaque Taillade qui mord une proie en sang rend 1 rage de plus.",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_blood",
+      "name": "Sang chaud",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "Chaque palier de la Souffrance s'éveille 5 % de vie plus tôt (par rang; paliers de base sous 75/55/35/15 % de vie).",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_thirst",
+      "name": "Soif inextinguible",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +0,5 % de vol de vie; R2: +1 % de vol de vie; R3: +1,5 % de vol de vie",
+      "solo": "survie"
+    },
+    {
+      "id": "howl",
+      "name": "Hurlement du sang",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : 8 rage par monstre à 8 m (10 à 48), ils perdent leur prochaine attaque, ralentis 3 s et provoqués, recharge 24 s; R2: porte 15 % plus loin et rend 3 rage de plus par monstre; R3: peintures de guerre : pendant 8 s, les coups reçus donnent deux fois plus de rage.",
+      "solo": "controle"
+    },
+    {
+      "id": "bz_rend",
+      "name": "Éventreur",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Éventration coûte 5 rage de moins (20) et ses plaies saignent 25 % de plus; R2: Tribut : sans assez de rage, Éventration se paie 8 % de votre vie, au plus une fois toutes les 4 s (jamais sous 10 % de vie).",
+      "solo": "zone"
+    },
+    {
+      "id": "bz_dodge",
+      "name": "Épaule de taureau",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: une seconde charge d'esquive (chacune se recharge en 4 s), deux Ruées d'affilée; R2: la Ruée finit par un coup d'épaule : 120 % des dégâts de l'arme à 2,5 m de l'arrivée, sonnés 0,6 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "throw",
+      "name": "Hache de jet",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : hache lancée (14 m), 160 % des dégâts de l'arme, plantée 6 s; le coup suivant l'arrache : +160 %, saignement 160 % en 4 s et 10 rage, recharge 10 s; R2: arrachée, elle rend 10 rage de plus et sa plaie saigne 2 s de plus; R3: deux charges.",
+      "solo": "degats"
+    },
+    {
+      "id": "grab",
+      "name": "Empoignade",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : empoigne et écrase le monstre le plus proche, 500 % des dégâts de l'arme, 150 % autour, étourdit 1 s, coût 30 rage, recharge 16 s (pas les seigneurs); R2: étourdit 2 s au lieu de 1 s; R3: l'impact fait saigner tout ce qui est à 3 m (100 % des dégâts de l'arme en 4 s).",
+      "solo": "controle"
+    },
+    {
+      "id": "bz_feast",
+      "name": "Festin de sang",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 1,
+      "desc": "Sous 30 % de vie, tout votre vol de vie est doublé.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_cruel",
+      "name": "Cruauté",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique; R2: +4 % de chance de critique; R3: +6 % de chance de critique",
+      "solo": "degats"
+    },
+    {
+      "id": "scorn",
+      "name": "Mépris de la douleur",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : pendant 6 s, la moitié de chaque coup reçu est différée (dette qui saigne ensuite, chaque coup porté en efface 2 % de votre vie), rage doublée sur coups reçus, recharge 28 s; R2: dure 2 s de plus et chaque coup reçu rend 4 rage de plus; R3: la dette effacée vous soigne de 50 % de son montant.",
+      "solo": "survie"
+    },
+    {
+      "id": "bloodlet",
+      "name": "Saignée",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : payez 10 % de vie pour 40 rage; pendant 6 s, 6 % de vol de vie (impossible sous 10 % de vie), recharge 24 s; R2: vol de vie de 9 % au lieu de 6 %; R3: pendant 6 s, la Souffrance vous tient au moins au palier II.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_savage",
+      "name": "Sauvagerie",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +12 % de dégâts critiques; R2: +24 % de dégâts critiques; R3: +36 % de dégâts critiques",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_carnage",
+      "name": "Carnage",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Un ennemi qui meurt en saignant transmet son saignement à tous les ennemis à 4 m.",
+      "solo": "zone"
+    },
+    {
+      "id": "avatar",
+      "name": "Avatar du carnage",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence (ultime) : rugissement 300 % des dégâts de l'arme à 6 m; pendant 10 s : 8 % de vol de vie, +1 m d'allonge, Souffrance au moins palier II, chaque coup ébranle le sol (35 %), recharge 100 s; R2: dure 3 s de plus et la Souffrance tient au moins au palier III.",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_vigor",
+      "name": "Rage de vivre",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Tant que votre rage dépasse 50, vous regagnez 0,5 % de votre vie par seconde.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_tempo",
+      "name": "Transe guerrière",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l'esquive); R2: -8 % sur les temps de recharge (sauf l'esquive); R3: -12 % sur les temps de recharge (sauf l'esquive)",
+      "solo": "utilite"
+    },
+    {
+      "id": "bz_bloodprice",
+      "name": "Prix du sang",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : Éventration et Empoignade se lancent toujours, la rage manquante prise sur la vie (1 % pour 3 rage, jamais sous 10 %; Éventration au plus une fois toutes les 4 s ainsi).",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_berserk",
+      "name": "Berserk",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : à 100 de rage, frénésie 6 s : +20 % de vitesse d'attaque, compétences sans coût en rage, mais la rage fond de 15 par seconde; puis 6 s avant la suivante.",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_stone",
+      "name": "Peau de pierre",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : la Souffrance ne donne plus de dégâts; sa réduction des dégâts subis devient 12 / 22 / 32 / 42 % au lieu de 8 / 15 / 22 / 30 %. Vitesse d'attaque, vol de vie et inébranlable restent.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_frenzy",
+      "name": "Frénésie",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: à Élan plein, chaque Taillade frappe aussi l'ennemi le plus proche de sa cible (2 m) pour 60 % du coup; R2: à Élan plein, les Taillades rendent 4 % des dégâts de plus (vol de vie).",
+      "solo": "zone"
+    },
+    {
+      "id": "bz_notyet",
+      "name": "Pas encore",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "En Souffrance maximale, un coup mortel vous laisse à 1 point de vie, invulnérable 1,5 s. Une fois toutes les 60 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_brutal",
+      "name": "Brutalité",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "maelstrom",
+      "name": "Tourbillon d'acier",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : tournoie 1,2 s en marchant à 60 % de vitesse, 100 % des dégâts de l'arme à 3,2 m toutes les 0,2 s, 20 rage pour lancer puis 15 rage/s, recharge 10 s; R2: chaque tour tire les monstres de 0,6 m vers vous; R3: dure 0,6 s de plus, et en Souffrance III ou plus chaque tour rend 0,6 % de votre vie.",
+      "solo": "zone"
+    },
+    {
+      "id": "bz_endure",
+      "name": "Cuir de guerre",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis; R2: -4 % de dégâts subis; R3: -6 % de dégâts subis",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_ram",
+      "name": "Bélier",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: les monstres bousculés par la Ruée saignent : 60 % des dégâts de l'arme en 3 s; R2: ils ne sont plus écartés, la Ruée les pousse devant vous jusqu'au bout de sa course.",
+      "solo": "controle"
+    },
+    {
+      "id": "bz_maul",
+      "name": "Éviscérer",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Éventration inflige +12 % de dégâts par palier de Souffrance (+48 % en Souffrance maximale); R2: en Souffrance maximale, Éventration ne coûte plus de rage.",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_fjord",
+      "name": "Festin du fjord",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Chaque monstre tué en Souffrance II ou plus vous rend 3 % de votre vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "bz_fury",
+      "name": "Colère froide",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +5 % de ressource générée; R2: +10 % de ressource générée; R3: +15 % de ressource générée",
+      "solo": "utilite"
+    },
+    {
+      "id": "bz_oath_blood",
+      "name": "Serment du sang",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : chaque palier de la Souffrance s'éveille 10 % de vie plus tôt (sous 85 / 65 / 45 / 25 %), mais son vol de vie est réduit de moitié.",
+      "solo": "degats"
+    },
+    {
+      "id": "bz_oath_wolf",
+      "name": "Serment du loup",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : la Ruée gagne une charge, et chaque monstre bousculé rend 6 rage au lieu de 3.",
+      "solo": "utilite"
+    },
+    {
+      "id": "bz_oath_bear",
+      "name": "Serment de l'ours",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : la Souffrance ne donne plus de vitesse d'attaque, mais sa réduction des dégâts subis augmente de moitié (50 % au plus).",
+      "solo": "survie"
+    }
+  ],
+  "pyromancer": [
+    {
+      "id": "combust",
+      "name": "Combustion",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Combustion (ennemis à 4 m du curseur détonent : 100 % des dégâts de l'arme + 50 % par brûlure consumée); R2: +15 % par brûlure consumée, rayon +1 m; R3: chaque détonation pose 2 brûlures aux ennemis à 3 m (réaction en chaîne).",
+      "solo": "zone"
+    },
+    {
+      "id": "py_kindle",
+      "name": "Attiser",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "py_core",
+      "name": "Cœur ardent",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie; R2: +10 % de vie; R3: +15 % de vie",
+      "solo": "survie"
+    },
+    {
+      "id": "py_bolt",
+      "name": "Trait affûté",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Trait de feu inflige +20 % de dégâts; R2: chaque Trait de feu lancé fait retomber la chaleur de 2.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_cool",
+      "name": "Sang-froid",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "La chaleur retombe 15 % plus vite (par rang).",
+      "solo": "utilite"
+    },
+    {
+      "id": "py_ash",
+      "name": "Peau de cendre",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +6 % d'armure; R2: +12 % d'armure; R3: +18 % d'armure",
+      "solo": "survie"
+    },
+    {
+      "id": "firewall",
+      "name": "Mur de flammes",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Mur de flammes (mur de 8 m pendant 5 s : 20 % des dégâts de l'arme et une brûlure toutes les 0,5 s, repousse); R2: s'allonge de 2 m et tient 1 s de plus; R3: les ennemis repoussés sont étourdis 0,5 s (une fois chacun).",
+      "solo": "controle"
+    },
+    {
+      "id": "py_ball",
+      "name": "Boule ardente",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Boule de feu éclate 0,5 m plus large et inflige +15 % de dégâts; R2: un ennemi touché portant 5 brûlures ou plus détone à 40 % de la force d'une détonation (brûlures consumées).",
+      "solo": "zone"
+    },
+    {
+      "id": "py_dodge",
+      "name": "Pas fuyant",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: une seconde charge d'esquive (chacune se recharge en 4 s); R2: Pas de braise fait retomber la chaleur de 20 et pose 2 brûlures.",
+      "solo": "survie"
+    },
+    {
+      "id": "vent",
+      "name": "Exutoire",
+      "branch": "Éveil - groupe c",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Exutoire (cône de flammes : 100 % des dégâts de l'arme + 2,5 % par point de chaleur, 2 brûlures, chaleur à 0); R2: +1 % par point de chaleur, portée +15 %; R3: une brûlure de plus par tranche de 20 de chaleur vidée.",
+      "solo": "zone"
+    },
+    {
+      "id": "emberguard",
+      "name": "Bouclier de braises",
+      "branch": "Éveil - groupe c",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Bouclier de braises (6 s, absorbe 10 % de la vie + 0,3 % par point de chaleur, chaleur à 0); R2: explose en finissant : 150 % des dégâts de l'arme à 4 m et 2 brûlures; R3: tant qu'il tient, la chaleur retombe 2 fois plus vite.",
+      "solo": "survie"
+    },
+    {
+      "id": "py_sear",
+      "name": "Brûlure vive",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "Vos brûlures infligent +15 % de dégâts (par rang).",
+      "solo": "degats"
+    },
+    {
+      "id": "py_tempo",
+      "name": "Cendres froides",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 %; R2: -8 %; R3: -12 % sur les temps de recharge (sauf l'esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "fireseed",
+      "name": "Germe de feu",
+      "branch": "Éveil - groupe d",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Germe de feu (éclate après 3 s ou à la mort : 250 % des dégâts de l'arme dans 4 m, propage toutes les brûlures de la victime); R2: l'éclat pose aussi 2 brûlures à chacun; R3: deux charges.",
+      "solo": "zone"
+    },
+    {
+      "id": "firestorm",
+      "name": "Tornade de feu",
+      "branch": "Éveil - groupe d",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Tornade de feu (4 s, 35 % des dégâts de l'arme toutes les 0,3 s à 2,5 m, une brûlure tous les 3 tours, aspire); R2: dure 2 s de plus; R3: aspire deux fois plus fort et pose une brûlure à chaque tour.",
+      "solo": "controle"
+    },
+    {
+      "id": "py_crit",
+      "name": "Œil du brasier",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 %; R2: +4 %; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_furnace",
+      "name": "Sang de salamandre",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "La zone Brûlante ne vous brûle plus (-2 % de vie par seconde épargnés).",
+      "solo": "survie"
+    },
+    {
+      "id": "cataclysm",
+      "name": "Cataclysme",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Ultime : 8 météores autour du curseur (6 m), 200 % des dégâts de l'arme chacun dans 2,5 m et 2 brûlures, puis tout ce qui brûle détone (immobile pendant l'appel); R2: 4 météores de plus, votre chaleur tombe à 0 quand il commence.",
+      "solo": "zone"
+    },
+    {
+      "id": "py_pyre",
+      "name": "Bûcher",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Un ennemi qui meurt en brûlant transmet ses brûlures aux ennemis à 4 m (6 m avec le Bûcher de Malachar).",
+      "solo": "zone"
+    },
+    {
+      "id": "py_swift",
+      "name": "Pas de cendre",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: +3 % de vitesse de déplacement; R2: +6 % de vitesse de déplacement; R3: +9 % de vitesse de déplacement",
+      "solo": "utilite"
+    },
+    {
+      "id": "py_phoenix",
+      "name": "Phénix",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : la Surchauffe devient un déchaînement de 4 s (sorts sans chaleur, +25 % de dégâts, mais vous brûlez 4 % de vie/s), puis 3 s épuisé, puis renaissance : nova de 250 % des dégâts de l'arme à 6 m, 2 brûlures, +10 % de votre vie.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_frost",
+      "name": "Feu froid",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : jamais de Surchauffe, la chaleur plafonne à 99 (un sort qui déborderait ne part pas), mais elle retombe 30 % moins vite.",
+      "solo": "utilite"
+    },
+    {
+      "id": "py_pyromane",
+      "name": "Pyromane",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : les ennemis portent jusqu'à 7 brûlures au lieu de 5; vos détonations infligent 20 % de dégâts en moins.",
+      "solo": "zone"
+    },
+    {
+      "id": "py_arc",
+      "name": "Arc de feu",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: le Trait de feu ricoche une fois de plus, chaque rebond garde 85 % de la force du précédent (le premier : 76,5 % des dégâts de l'arme); R2: un Trait ou rebond qui frappe un ennemi au maximum de brûlures le fait détoner à 40 %.",
+      "solo": "zone"
+    },
+    {
+      "id": "py_crest",
+      "name": "Sur la crête",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "La zone Ardente s'ouvre dès 40 de chaleur, et en zone Brûlante vos sorts chauffent 20 % de moins.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_blaze",
+      "name": "Brasier",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "emberray",
+      "name": "Rayon de braise",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Rayon de braise (rayon de 10 m tenu 2,5 s : 32 % des dégâts de l'arme toutes les 0,25 s, une brûlure un tic sur 2, chauffe de 20/s); R2: une brûlure à chaque tic, largeur doublée la dernière seconde; R3: un ennemi porté au maximum de brûlures détone à 40 % (une fois par ennemi et par rayon).",
+      "solo": "degats"
+    },
+    {
+      "id": "py_endure",
+      "name": "Endurance",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 %; R2: -4 %; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "py_flare",
+      "name": "Embrasement",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: en reparaissant, le Pas de braise souffle une nova : 100 % des dégâts de l'arme à 3 m, une brûlure, repousse; R2: lancé en zone Brûlante (ou pendant le Phénix), fait détoner les brûlures des ennemis à 3 m de l'endroit quitté à 50 %.",
+      "solo": "survie"
+    },
+    {
+      "id": "py_comet",
+      "name": "Comète",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: la Boule de feu laisse le sol en flammes 2 s (2,2 m) : une brûlure toutes les 0,5 s; R2: en zone Brûlante (ou Phénix), elle éclate une seconde fois 0,4 s plus tard à 50 %.",
+      "solo": "zone"
+    },
+    {
+      "id": "py_cinders",
+      "name": "Cendres vives",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Chaque ennemi tué par une détonation fait retomber votre chaleur de 6.",
+      "solo": "utilite"
+    },
+    {
+      "id": "py_keen",
+      "name": "Flamme vive",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +10 %; R2: +20 %; R3: +30 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_oath_spark",
+      "name": "Serment de l'étincelle",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : le Trait de feu (et chaque rebond) pose une brûlure de plus, mais il chauffe de 4.",
+      "solo": "degats"
+    },
+    {
+      "id": "py_oath_ash",
+      "name": "Serment de la cendre",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : le Pas de braise fait détoner toutes les brûlures des ennemis à 3 m de l'endroit quitté, à pleine force, mais chauffe de 10 au lieu de refroidir.",
+      "solo": "zone"
+    },
+    {
+      "id": "py_oath_ember",
+      "name": "Serment des braises",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : les détonations ne consument plus que la moitié des brûlures (arrondi en dessous), le reste continue de brûler; mais elles frappent 20 % moins fort.",
+      "solo": "zone"
+    }
+  ],
+  "necromancer": [
+    {
+      "id": "raise",
+      "name": "Relever les morts",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Relever les morts. R2: Un squelette de plus dans l'armée. R3: Leurs coups ralentissent 1,5 s, et un squelette de plus.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_marrow",
+      "name": "Moelle vive",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_rot",
+      "name": "Chair putride",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie.; R2: +10 % de vie.; R3: +15 % de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_bonebolt",
+      "name": "Éclats barbelés",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Épines d'os inflige +25 % de dégâts. R2: Chaque épine qui touche un autre ennemi que le premier vous rend 1 d'essence (4 au plus).",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_carrion",
+      "name": "Charogne",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "Les cadavres restent 5 s de plus (même texte aux deux rangs).",
+      "solo": "utilite"
+    },
+    {
+      "id": "nc_ivory",
+      "name": "Ossature d'ivoire",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +8 % d'armure.; R2: +16 % d'armure.; R3: +24 % d'armure.",
+      "solo": "survie"
+    },
+    {
+      "id": "corpsex",
+      "name": "Explosion cadavérique",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Explosion cadavérique. R2: Quatre cadavres au lieu de trois, et chaque explosion porte 1 m plus loin. R3: La peste noire : ce que les explosions touchent est contaminé 3 s ; la peste ronge et, à la mort de son hôte, saute sur deux voisins.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_blight",
+      "name": "Flétrissure virulente",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Flétrissure coûte 5 essence de moins et inflige +20 % de dégâts. R2: Arrache 2 lambeaux (deux cadavres) à un champion : un monstre champion, un rare, un seigneur, un maître de donjon.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_dodge",
+      "name": "Dislocation vive",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Une seconde charge d'esquive (chacune se recharge en 4,5 s). R2: Vos os laissent un tas (un cadavre) là où vous vous êtes disloqué.",
+      "solo": "survie"
+    },
+    {
+      "id": "decrepify",
+      "name": "Décrépitude",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Décrépitude. R2: Ôte 10 % de dégâts de plus et dure 2 s de plus. R3: Effroi : chaque coup sur un maudit a 15 % de chances de le terrifier 1 s (il y résiste ensuite 4 s).",
+      "solo": "controle"
+    },
+    {
+      "id": "agony",
+      "name": "Lien de souffrance",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Lien de souffrance. R2: Transmet 55 % des dégâts et dure 3 s de plus. R3: Si le maudit meurt avant la fin, le lien saute sur l'ennemi le plus proche (6 m) pour le temps qui restait.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_bonelord",
+      "name": "Seigneur des os",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "Vos serviteurs infligent +15 % de dégâts (par rang, texte identique).",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_rite",
+      "name": "Rituel funèbre",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l'esquive).; R2: -8 % sur les temps de recharge (sauf l'esquive).; R3: -12 % sur les temps de recharge (sauf l'esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "fleshgolem",
+      "name": "Golem de chair",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Golem de chair. R2: +20 % de dégâts, étourdit 0,8 s, coûte 10 essence de moins. R3: Quand il tombe, il s'effondre en 4 cadavres.",
+      "solo": "survie"
+    },
+    {
+      "id": "ossature",
+      "name": "Ossature",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Ossature. R2: 2 plaques de plus (8 au plus). R3: Chaque plaque brisée vous rend 5 d'essence.",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_glass",
+      "name": "Œil vitreux",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_lich",
+      "name": "Maître de la légion",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Vos serviteurs frappent 25 % plus vite et chaque ennemi qu'ils achèvent vous rend 3 d'essence.",
+      "solo": "degats"
+    },
+    {
+      "id": "colossus",
+      "name": "Colosse d'ossements",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence : Colosse d'ossements. (ultime) R2: Une quatrième frappe, et il s'effondre en deux cadavres de plus.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_hoard",
+      "name": "Thésauriseur",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "+20 % de dégâts (les vôtres et ceux de vos serviteurs) tant que votre essence dépasse 80.",
+      "solo": "degats"
+    },
+    {
+      "id": "nc_thirst",
+      "name": "Soif d'essence",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: +5 % de ressource générée.; R2: +10 % de ressource générée.",
+      "solo": "utilite"
+    },
+    {
+      "id": "nc_legion",
+      "name": "Légion sans fin",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "3 squelettes de plus dans l'armée, mais chacun inflige 30 % de dégâts en moins.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_bonepact",
+      "name": "Pacte d'os",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Chaque serviteur debout réduit de 4 % les dégâts que vous subissez (20 % au plus).",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_harvest",
+      "name": "Moisson de chair",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Flétrissure ne coûte plus d'essence, mais se recharge en 3 s : l'essence ne sert plus qu'à l'armée.",
+      "solo": "utilite"
+    },
+    {
+      "id": "nc_thorns",
+      "name": "Forêt d'épines",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: Les épines couvrent 0,6 m de plus et infligent +15 % de dégâts. R2: Elles laissent 2 s un sol hérissé (un seul à la fois) qui ralentit et pique ceux qui s'y tiennent : 15 % des dégâts de l'arme chaque 1 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_phylactery",
+      "name": "Phylactère",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "En Légion III, un coup qui vous tuerait est pris par vos serviteurs : 2 d'entre eux s'effondrent en cadavres et vous restez debout. Une fois toutes les 45 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_dread",
+      "name": "Effroi des morts",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "sacrifice",
+      "name": "Sacrifice",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : Sacrifice. R2: Chaque éclat vous rend 2 % de votre vie (Charnier). R3: Les éclats maudissent ce qu'ils touchent : Décrépitude, 4 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_endure",
+      "name": "Os de pierre",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis.; R2: -4 % de dégâts subis.; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_torrent",
+      "name": "Torrent d'os",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: Les ennemis que le flot traverse subissent 80 % des dégâts de l'arme et sont ralentis 2 s. R2: La Dislocation dure 0,25 s de plus et chaque ennemi traversé vous rend 6 d'essence (18 au plus).",
+      "solo": "controle"
+    },
+    {
+      "id": "nc_putrefy",
+      "name": "Putréfaction",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Sur un ennemi sous 50 % de sa vie, Flétrissure arrache un lambeau de plus (un cadavre). R2: Sa proie est contaminée : la peste noire la ronge 3 s et saute sur ses voisins à sa mort.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_shards",
+      "name": "Os brisés",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Un serviteur qui s'effondre usé (Lien des os, Sacrifice) vous rend 5 d'essence et projette ses éclats autour de lui : 60 % des dégâts de l'arme à 2,5 m.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_haste",
+      "name": "Rite pressé",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: -3 % sur les temps de recharge (sauf l'esquive).; R2: -6 % sur les temps de recharge (sauf l'esquive).; R3: -9 % sur les temps de recharge (sauf l'esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "nc_oath_lich",
+      "name": "Serment de la liche",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Le Lien des os fait prendre 60 % de chaque coup à votre armée dès la Légion I, mais vos serviteurs infligent 25 % de dégâts en moins.",
+      "solo": "survie"
+    },
+    {
+      "id": "nc_oath_plague",
+      "name": "Serment de la peste",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Vos Épines d'os contaminent l'ennemi qu'elles frappent le plus fort : la peste noire le ronge 2 s (25 % des dégâts de l'arme chaque 0,5 s) et saute sur ses voisins à sa mort.",
+      "solo": "zone"
+    },
+    {
+      "id": "nc_oath_grave",
+      "name": "Serment du fossoyeur",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Un squelette qui s'effondre se relève aussitôt, une fois, avec 50 % de son endurance.",
+      "solo": "survie"
+    }
+  ],
+  "engineer": [
+    {
+      "id": "bombard",
+      "name": "Bombarde",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : canon posé (30 matériaux, recharge 8 s, 28 s de base, 3 engins max), un boulet toutes les 2,2 s sur l'ennemi le plus proche à 16 m (55 % des dégâts de l'arme, éclats 60 % à 1,5 m); R2: son boulet étourdit 0,5 s ce qu'il frappe de plein fouet; R3: tire deux boulets coup sur coup, le second sur un autre ennemi.",
+      "solo": "degats"
+    },
+    {
+      "id": "en_powder",
+      "name": "Poudre fine",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "en_oak",
+      "name": "Gambison de chêne",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie; R2: +10 % de vie; R3: +15 % de vie",
+      "solo": "survie"
+    },
+    {
+      "id": "en_bolt",
+      "name": "Carreaux lestés",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Carreau à poudre inflige +25 % de dégâts; R2: une explosion qui frappe au moins 2 ennemis rend 2 matériaux.",
+      "solo": "degats"
+    },
+    {
+      "id": "en_battery",
+      "name": "Batterie serrée",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "Vos engins infligent +8 % de dégâts (par rang).",
+      "solo": "degats"
+    },
+    {
+      "id": "en_brass",
+      "name": "Plaques de laiton",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +8 % d'armure; R2: +16 % d'armure; R3: +24 % d'armure",
+      "solo": "survie"
+    },
+    {
+      "id": "mangonel",
+      "name": "Mangonneau",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : catapulte (35 matériaux, recharge 10 s), une pierre toutes les 3,5 s sur le plus gros groupe entre 6 et 22 m (220 % des dégâts de l'arme dans 3,2 m), ralentit 1,5 s; R2: la pierre se fend en 3 éclats (50 % des dégâts de l'arme dans 1,5 m chacun); R3: étourdit 0,8 s au cœur de sa chute (1,5 m).",
+      "solo": "zone"
+    },
+    {
+      "id": "en_chain",
+      "name": "Chaîne de fer",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Boulet ramé coûte 5 matériaux de moins et inflige +20 % de dégâts; R2: ce qu'il traverse est étourdi 0,6 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "en_dodge",
+      "name": "Double charge",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: une seconde charge d'esquive (chacune se recharge en 5 s); R2: la charge sème des chausse-trapes 3 s : ennemis dans 2,5 m ralentis et 15 % des dégâts de l'arme par seconde.",
+      "solo": "survie"
+    },
+    {
+      "id": "ballista",
+      "name": "Baliste",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : arc de siège (30 matériaux, recharge 8 s), un trait perçant toutes les 1,6 s (20 m, 45 % des dégâts de l'arme par ennemi); R2: cloue le premier ennemi traversé, étourdi 1 s; R3: tire deux traits côte à côte.",
+      "solo": "degats"
+    },
+    {
+      "id": "pavise",
+      "name": "Pavois",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : bouclier planté 15 s (recharge 16 s), arrête les projectiles de face, -25 % de dégâts subis aux joueurs à 3 m derrière; R2: pieux : ennemis à 2 m devant ralentis et 30 % des dégâts de l'arme par seconde; R3: deux pavois à la fois.",
+      "solo": "survie"
+    },
+    {
+      "id": "en_sappers",
+      "name": "Sapeurs",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "R1: poser un engin coûte 5 matériaux de moins; R2: vos engins tiennent 6 s de plus.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_drill",
+      "name": "Exercice du siège",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l'esquive); R2: -8 % sur les temps de recharge (sauf l'esquive); R3: -12 % sur les temps de recharge (sauf l'esquive)",
+      "solo": "utilite"
+    },
+    {
+      "id": "trebuchet",
+      "name": "Trébuchet",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : engin lourd unique (45 matériaux, recharge 14 s), une pierre toutes les 5 s sur le plus gros groupe entre 8 et 30 m (290 % des dégâts de l'arme dans 4 m); R2: la pierre rebondit 4 m plus loin (50 % des dégâts de l'arme); R3: étourdit 1 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "workshop",
+      "name": "Atelier de campagne",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : établi 12 s (recharge 20 s), engins à 8 m tirent 40 % plus vite et ne vieillissent plus, +4 matériaux/s à 4 m de lui; R2: poser un engin dans son rayon coûte moitié moins; R3: l'établi bâtit seul une bombarde gratuite hors plafond pour sa durée.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_aim",
+      "name": "Visée du pointeur",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique; R2: +4 % de chance de critique; R3: +6 % de chance de critique",
+      "solo": "degats"
+    },
+    {
+      "id": "en_concert",
+      "name": "Tir concerté",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "La désignation s'ouvre dès le palier I de la Batterie, et quand un ennemi désigné meurt, le plus proche (6 m) l'est à sa place.",
+      "solo": "degats"
+    },
+    {
+      "id": "belfry",
+      "name": "Beffroi",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence (ultime) : tour de siège 12 s (recharge 90 s), carreaux par trois en éventail et +50 % de portée, immobile mais -40 % de dégâts subis, Batterie palier IV (+40 % de cadence); effondrement 250 % des dégâts de l'arme dans 4 m; R2: vos engins ne vieillissent pas tant qu'il est debout, l'effondrement étourdit 1,5 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "en_ordnance",
+      "name": "Grosse artillerie",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Les tirs explosifs de vos engins (bombarde, mangonneau, trébuchet) couvrent 25 % de rayon en plus.",
+      "solo": "zone"
+    },
+    {
+      "id": "en_haste",
+      "name": "Approvisionnement",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: +5 % de ressource générée; R2: +10 % de ressource générée; R3: +15 % de ressource générée",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_grand",
+      "name": "Grande batterie",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : vous gardez 4 engins au lieu de 3, mais chacun ne tient que 60 % de sa durée.",
+      "solo": "degats"
+    },
+    {
+      "id": "en_salvage",
+      "name": "Récupération",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : un engin démonté ou remplacé rend tout le prix restant, chaque ennemi achevé par un engin rend 4 matériaux; mais un carreau ne rapporte plus que 3 matériaux.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_bastion",
+      "name": "Bastion de campagne",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Clé de voûte : chaque palier de la Batterie réduit de 6 % les dégâts subis, mais -15 % de vitesse de déplacement.",
+      "solo": "survie"
+    },
+    {
+      "id": "en_volley",
+      "name": "Salve de carreaux",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: un carreau sur 4, tirés à la suite, part par trois en éventail; R2: l'explosion porte 1 m plus loin et étourdit 0,4 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "en_master",
+      "name": "Maître de siège",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "Au palier III de la Batterie, l'explosion de vos carreaux désigne tout ce qu'elle touche, et vos engins infligent +10 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "en_sight",
+      "name": "Œil du maître",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts; R2: +8 % de dégâts; R3: +12 % de dégâts",
+      "solo": "degats"
+    },
+    {
+      "id": "ram",
+      "name": "Bélier",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : bélier sur roues vers le curseur (14 m, recharge 12 s), 200 % des dégâts de l'arme à tout ce qu'il percute, repoussé et étourdi 1 s; R2: éclate au bout de sa course : 150 % des dégâts de l'arme dans 3 m; R3: désigne tout ce qu'il percute (Tir concerté).",
+      "solo": "controle"
+    },
+    {
+      "id": "en_mantlet",
+      "name": "Mantelet",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis; R2: -4 % de dégâts subis; R3: -6 % de dégâts subis",
+      "solo": "survie"
+    },
+    {
+      "id": "en_blast",
+      "name": "Charge double",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: une seconde charge éclate là où vous retombez (70 % des dégâts de l'arme); R2: les deux charges étourdissent 0,8 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "en_links",
+      "name": "Maillons rougis",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: Boulet ramé porte 4 m plus loin et inflige +25 % de dégâts; R2: ce qu'il traverse brûle 3 s (60 % des dégâts de l'arme en tout).",
+      "solo": "zone"
+    },
+    {
+      "id": "en_supply",
+      "name": "Convoi",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Vos matériaux remontent de 1,5 par seconde de plus.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_rig",
+      "name": "Gréement",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: -3 % sur les temps de recharge (sauf l'esquive); R2: -6 % sur les temps de recharge (sauf l'esquive); R3: -9 % sur les temps de recharge (sauf l'esquive)",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_oath_siege",
+      "name": "Serment du siège",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : vos engins ne vieillissent pas tant que vous êtes à 14 m d'eux, mais vous n'en gardez que 2.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_oath_guild",
+      "name": "Serment de la guilde",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : poser un engin ne coûte plus de matériaux, mais leurs recharges sont 2 fois plus longues.",
+      "solo": "utilite"
+    },
+    {
+      "id": "en_oath_crown",
+      "name": "Serment de la couronne",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Serment : vos carreaux partent toujours par trois, mais vos engins infligent 10 % de dégâts en moins.",
+      "solo": "degats"
+    }
+  ],
+  "rogue": [
+    {
+      "id": "vanish",
+      "name": "Disparition",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : vous vous fondez dans l'ombre 5 s, les monstres vous perdent de vue et vous courez 30 % plus vite; attaquer vous révèle d'un critique qui étourdit; R2: En disparaissant, vous ouvrez 2 Ouvertures; R3: Disparition vous rend aussitôt une charge de Fumigène.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_edge",
+      "name": "Fil du rasoir",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_leather",
+      "name": "Cuir noir",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie.; R2: +10 % de vie.; R3: +15 % de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_stab",
+      "name": "Estocs jumeaux",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Un Estoc dans le dos ouvre 2 Ouvertures au lieu d'une; R2: Chaque Estoc sur une cible empoisonnée lui ajoute 2 doses au lieu d'une.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_stalk",
+      "name": "Traqueur",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "Chaque palier de la Traque vous donne aussi +1,5 % de dégâts contre votre proie.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_nimble",
+      "name": "Pas feutré",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +3 % de vitesse de déplacement.; R2: +6 % de vitesse de déplacement.; R3: +9 % de vitesse de déplacement.",
+      "solo": "utilite"
+    },
+    {
+      "id": "envenom",
+      "name": "Lame empoisonnée",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : coup de lame enduite (100 % des dégâts de l'arme) qui pose 3 doses de poison (10 au plus, 12 % des dégâts de l'arme par seconde chacune pendant 8 s); un Perce-cœur fait éclore le poison d'un coup; R2: Le poison engourdit : la cible empoisonnée est ralentie; R3: En éclosant, le poison gicle sur les monstres à 3 m de la cible : chacun reçoit deux fois les doses qu'elle portait (10 au plus).",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_heart",
+      "name": "Cœur percé",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Un Perce-cœur de 3 Ouvertures ou plus étourdit sa cible 0,8 s; R2: Un Perce-cœur critique vous rend 1 Ouverture.",
+      "solo": "controle"
+    },
+    {
+      "id": "ro_dodge",
+      "name": "Fumée épaisse",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Une seconde charge d'esquive (chacune se recharge en 3,5 s); R2: Fumée âcre : le Fumigène laisse un nuage de 2,5 m, les monstres dedans ratent 30 % de leurs coups pendant 2 s et reçoivent 1 dose de poison.",
+      "solo": "survie"
+    },
+    {
+      "id": "garrote",
+      "name": "Garrot",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : vous vous glissez derrière l'ennemi (3,5 m) et l'étranglez 1,5 s, il ne peut rien faire et prend 300 % des dégâts de l'arme (double depuis l'ombre), ouvre 3 Ouvertures; R2: En le lâchant, vous l'aveuglez : 50 % de ses coups ratent pendant 4 s; R3: S'il meurt étranglé, vous disparaissez 3 s et le Garrot se recharge aussitôt.",
+      "solo": "controle"
+    },
+    {
+      "id": "smokebomb",
+      "name": "Bombe fumigène",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : nuage de 4 m pendant 6 s, les joueurs dedans sont cachés, les monstres ratent 40 % de leurs coups et sont ralentis; R2: Le nuage empoisonne d'une dose par seconde les monstres qui y restent; R3: Les joueurs dedans subissent 20 % de dégâts en moins.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_shadows",
+      "name": "Enfant des ombres",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "Caché, vous regagnez 1,5 % de votre vie par seconde.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_poise",
+      "name": "Sang-froid",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l’esquive).; R2: -8 % sur les temps de recharge (sauf l’esquive).; R3: -12 % sur les temps de recharge (sauf l’esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "bladedance",
+      "name": "Danse des lames",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : 6 coups en 1,2 s sur l'ennemi sous le curseur (4 m), invulnérable, 70 % des dégâts de l'arme chacun, passe au plus proche s'il tombe; R2: Tous les 2 coups de la danse, vous ouvrez une Ouverture; R3: La dernière passe frappe aussi tout à 3 m de la proie : 150 % des dégâts de l'arme.",
+      "solo": "degats"
+    },
+    {
+      "id": "larceny",
+      "name": "Larcin",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : coup qui vole (120 % des dégâts de l'arme), pendant 8 s la cible frappe 20 % moins fort et vous 20 % plus fort, vole un bienfait aux champions; R2: Le Larcin vous ouvre 2 Ouvertures; R3: Pendant le vol, vos coups sur la cible volée vous rendent 10 % des dégâts infligés.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_eye",
+      "name": "Œil du coupe-jarret",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_cutpurse",
+      "name": "Coupe-bourse",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Chaque proie que vous tuez en Traque II ou plus vous ouvre 2 Ouvertures.",
+      "solo": "degats"
+    },
+    {
+      "id": "thousandcuts",
+      "name": "Mille entailles",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence (ultime) : intouchable 1,6 s, 8 frappes sur l'ennemi (90 % des dégâts de l'arme, critiques assurés, dernière 400 %), puis caché 2 s derrière lui; R2: Vous réapparaissez avec vos 5 Ouvertures.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_killing",
+      "name": "Lame du maître",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "Chacun de vos coups critiques ôte 0,1 s aux recharges de vos compétences (pas à l'esquive ni à l'ultime).",
+      "solo": "utilite"
+    },
+    {
+      "id": "ro_venom",
+      "name": "Lames affûtées",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: +8 % de dégâts critiques.; R2: +16 % de dégâts critiques.; R3: +24 % de dégâts critiques.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_ghost",
+      "name": "Fantôme",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Un Perce-cœur de 5 Ouvertures vous rend à l'ombre : vous êtes caché 1,5 s, et votre coup suivant est une Embuscade.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_assassin",
+      "name": "Assassin",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Vos coups depuis l'ombre frappent +50 % plus fort et étourdissent 2 s. Mais la Traque monte moins vite : un palier tous les 4 coups.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_duelist",
+      "name": "Duelliste",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Changer de proie ne coûte plus qu'un palier de Traque. Mais elle s'arrête au palier III : plus de Mise à mort.",
+      "solo": "utilite"
+    },
+    {
+      "id": "ro_flurry",
+      "name": "Rafale d’estocs",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: Un Estoc sur 5 d'une même chaîne frappe des deux lames à la fois (deux coups); R2: Vos Estocs dans le dos ont +15 % de chance de critique en plus.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_prey",
+      "name": "La proie choisie",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "Éveil de la Traque : elle monte d'un palier tous les 2 coups au lieu de 3.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_keen",
+      "name": "Tranchant",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "contract",
+      "name": "Contrat",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : met à prix l'ennemi (18 m) pendant 12 s, +25 % de dégâts contre lui, chaque Perce-cœur contre lui rend 1 Ouverture; s'il meurt, vos recharges en cours fondent de moitié et une prime d'or tombe; R2: S'il meurt sous contrat, vous disparaissez 2 s; R3: À sa mort, le contrat passe une fois au monstre le plus proche du corps (8 m).",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_slip",
+      "name": "Esquiveur",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis.; R2: -4 % de dégâts subis.; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_veil",
+      "name": "Voile de fumée",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: Le Fumigène vous cache 0,8 s de plus; R2: À l'arrivée du Fumigène, vous regagnez 3 % de votre vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_coup",
+      "name": "Coup de grâce",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: La Mise à mort fauche sous 30 % de vie au lieu de 25 %; R2: Une Mise à mort vous rend toutes les Ouvertures que le Perce-cœur a dépensées.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_quick",
+      "name": "Main leste",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Chaque Perce-cœur vous rend 2 % de votre vie par Ouverture dépensée.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_tempo",
+      "name": "Tempo de l’ombre",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +3 % de vitesse d’attaque.; R2: +6 % de vitesse d’attaque.; R3: +9 % de vitesse d’attaque.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_oath_night",
+      "name": "Serment de la nuit",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Chaque monstre que vous tuez vous rend à l'ombre : caché 1 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "ro_oath_blood",
+      "name": "Serment du sang",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Vos coups critiques ouvrent une plaie : la cible saigne 30 % du coup en 3 s.",
+      "solo": "degats"
+    },
+    {
+      "id": "ro_oath_guild",
+      "name": "Serment de la guilde",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Un Perce-cœur de 5 Ouvertures vous en rend 1.",
+      "solo": "degats"
+    }
+  ],
+  "shaman": [
+    {
+      "id": "wolfform",
+      "name": "Forme du loup",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : vous devenez loup (plus rapide, Morsure et Curée, saignements), l'Esprit brûle tant que vous restez bête; en entrant, hurlement : +20 % de vitesse d'attaque 4 s et saignement à 4 m; R2: Traque : Curée bondit jusqu'à 9 m et sa proie est ralentie 2 s; R3: Meute de sang : un monstre qui meurt en saignant de vos morsures vous rend 6 d'Esprit.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_fang",
+      "name": "Croc d’esprit",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_hide",
+      "name": "Peau épaisse",
+      "branch": "Éveil",
+      "tier": 0,
+      "maxRank": 3,
+      "desc": "R1: +5 % de vie.; R2: +10 % de vie.; R3: +15 % de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_claws",
+      "name": "Griffes profondes",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: Vos clics gauches, sous toutes vos formes, infligent +20 % de dégâts; R2: Les Griffes d'esprit laissent un sillon qui ralentit 1,5 s ; les coups de vos bêtes portent 0,5 m plus loin.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_circle",
+      "name": "Mémoire des bêtes",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 2,
+      "desc": "R1: L'Harmonie se souvient des formes prises pendant 20 s au lieu de 15; R2: Le souffle de l'homme (Cercle des bêtes) soigne 10 % de votre vie au lieu de 6 %.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_fur",
+      "name": "Fourrures",
+      "branch": "Éveil",
+      "tier": 1,
+      "maxRank": 3,
+      "desc": "R1: +8 % d’armure.; R2: +16 % d’armure.; R3: +24 % d’armure.",
+      "solo": "survie"
+    },
+    {
+      "id": "bearform",
+      "name": "Forme de l’ours",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : vous devenez ours, 8 % de dégâts subis en moins, 20 % de vie en plus, inébranlable; en entrant, rugit (repousse, étourdit à 4 m) et bouclier de 12 % de votre vie; R2: Hibernation : en ours, vous régénérez 1,5 % de votre vie par seconde; R3: Ours des cavernes : Écrasement attire à vous les monstres à 5 m avant de retomber.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_crows",
+      "name": "Nuée noire",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Curée et Écrasement coûtent 5 d'Esprit de moins ; vos clics droits, sous toutes vos formes, infligent +20 % de dégâts; R2: Curée, Écrasement et la Charge du mammouth infligent +40 % de dégâts à un monstre aveuglé par vos corbeaux.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_dodge",
+      "name": "Plumes de corbeau",
+      "branch": "Éveil",
+      "tier": 2,
+      "maxRank": 2,
+      "desc": "R1: Une seconde charge d'esquive (chacune se recharge en 4 s); R2: En retombant, les monstres à 3 m ratent 30 % de leurs coups pendant 2 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "ancestortotem",
+      "name": "Totem des ancêtres",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : totem au curseur (12 m) pendant 14 s, les héros à 8 m régénèrent 1,5 % de leur vie par seconde, +50 % d'Esprit à son pied et les bêtes ne le brûlent plus; R2: Totem hurleur : toutes les 2 s, ralentit 2 s les monstres à 8 m; R3: Aigle du totem : toutes les 2 s, l'aigle fond sur le monstre le plus proche (8 m) : 60 % des dégâts de l'arme.",
+      "solo": "survie"
+    },
+    {
+      "id": "spiritpack",
+      "name": "Meute spectrale",
+      "branch": "Éveil - Choix",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : 3 loups-esprits vous accompagnent 15 s (30 % des dégâts de l'arme par morsure, +30 % en forme de loup); R2: Meute affamée : leurs morsures posent une dose de votre saignement; R3: Meute fidèle : un loup-esprit qui tue sa proie vous rend 5 d'Esprit.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_kin",
+      "name": "Parenté sauvage",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 2,
+      "desc": "Vos esprits (loups de la meute, sanglier, aigles) frappent +15 % plus fort.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_drum",
+      "name": "Tambour de peau",
+      "branch": "Éveil",
+      "tier": 3,
+      "maxRank": 3,
+      "desc": "R1: -4 % sur les temps de recharge (sauf l’esquive).; R2: -8 % sur les temps de recharge (sauf l’esquive).; R3: -12 % sur les temps de recharge (sauf l’esquive).",
+      "solo": "utilite"
+    },
+    {
+      "id": "boarcharge",
+      "name": "Charge du sanglier",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : un sanglier-esprit fonce jusqu'au curseur (16 m), 200 % des dégâts de l'arme, étourdit 0,5 s puis ralentit 2 s; R2: Défenses : ce qu'il percute saigne (100 % des dégâts de l'arme en 4 s); R3: Retour : il fait demi-tour et fonce jusqu'à vous (100 % à ce qu'il percute de nouveau).",
+      "solo": "zone"
+    },
+    {
+      "id": "barkskin",
+      "name": "Peau d’écorce",
+      "branch": "Éveil - Choix",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : 8 s d'écorce, 30 % de dégâts subis en moins, épines 30 % des dégâts de l'arme au contact, en ours +2 % de vie par seconde; R2: Éclats d'écorce : en tombant, 120 % des dégâts de l'arme à 3 m; R3: Sève vive : tant qu'elle tient, vos bêtes ne brûlent plus l'Esprit.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_wild",
+      "name": "Instinct",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 3,
+      "desc": "R1: +2 % de chance de critique.; R2: +4 % de chance de critique.; R3: +6 % de chance de critique.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_shed",
+      "name": "Mue",
+      "branch": "Éveil",
+      "tier": 4,
+      "maxRank": 1,
+      "desc": "Changer de forme brise les racines qui vous retiennent et purge le poison qui vous ronge.",
+      "solo": "survie"
+    },
+    {
+      "id": "mammoth",
+      "name": "Esprit du Mammouth",
+      "branch": "Éveil - Ultime",
+      "tier": 5,
+      "maxRank": 2,
+      "desc": "R1: Nouvelle compétence (ultime) : mammouth-esprit géant 15 s, barrit en surgissant (250 % des dégâts de l'arme à 5 m), 40 % de dégâts subis en moins, inébranlable, le sol tremble à chaque pas; R2: Barrissement : le mammouth reste 3 s de plus, et son barrissement étourdit 1,5 s.",
+      "solo": "zone"
+    },
+    {
+      "id": "sh_elk",
+      "name": "Grand esprit d’élan",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 1,
+      "desc": "En Harmonie III, le grand esprit d'élan vous suit : vous régénérez 1 % de votre vie par seconde.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_mend",
+      "name": "Sève",
+      "branch": "Éveil",
+      "tier": 5,
+      "maxRank": 3,
+      "desc": "R1: +10 % de régénération de vie.; R2: +20 % de régénération de vie.; R3: +30 % de régénération de vie.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_alpha",
+      "name": "Chef de meute",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Chaque Curée appelle un loup-esprit à vos côtés pendant 6 s (3 au plus), mais la forme de l'ours brûle l'Esprit deux fois plus vite.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_grove",
+      "name": "Bosquet sacré",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "Vos sorts de forme humaine frappent +30 % et remplissent 50 % d'Esprit en plus, mais vos bêtes le brûlent 50 % plus vite.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_stone",
+      "name": "Cœur de pierre",
+      "branch": "Éveil - Clé de voûte",
+      "tier": 6,
+      "maxRank": 1,
+      "desc": "En ours, vous subissez 25 % de dégâts en moins au lieu de 8 % et chaque coup reçu vous rend 2 d'Esprit, mais le loup ne court pas plus vite que l'homme.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_rake",
+      "name": "Labour d’esprit",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 2,
+      "desc": "R1: Vos clics gauches infligent +15 % de dégâts, et les Griffes d'esprit rapportent 2 d'Esprit de plus; R2: Un coup de clic gauche sur 4, toutes formes confondues, frappe deux fois plus fort.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_harmony",
+      "name": "Harmonie parfaite",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 1,
+      "desc": "Éveil du Cercle : en Harmonie III, l'esprit libéré par un changement de forme frappe tout à 3 m (120 % des dégâts de l'arme).",
+      "solo": "zone"
+    },
+    {
+      "id": "sh_tusk",
+      "name": "Défense d’ivoire",
+      "branch": "Ascension",
+      "tier": 7,
+      "maxRank": 3,
+      "desc": "R1: +4 % de dégâts.; R2: +8 % de dégâts.; R3: +12 % de dégâts.",
+      "solo": "degats"
+    },
+    {
+      "id": "primalcall",
+      "name": "Appel primal",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: Nouvelle compétence : selon la forme, aigle-esprit sur le curseur (homme, étourdit), hurlement de meute qui fait éclore les saignements (loup) ou défi qui provoque (ours/mammouth); R2: Écho primal : l'appel libère aussi l'esprit de votre forme (Cercle des bêtes); R3: Deux charges.",
+      "solo": "utilite"
+    },
+    {
+      "id": "sh_bark",
+      "name": "Écorce",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 3,
+      "desc": "R1: -2 % de dégâts subis.; R2: -4 % de dégâts subis.; R3: -6 % de dégâts subis.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_wings",
+      "name": "Ailes noires",
+      "branch": "Ascension",
+      "tier": 8,
+      "maxRank": 2,
+      "desc": "R1: Les monstres que vous survolez en corbeau sont lacérés : 60 % des dégâts de l'arme; R2: Chaque Envol du corbeau vous rend 8 d'Esprit en retombant.",
+      "solo": "utilite"
+    },
+    {
+      "id": "sh_murder",
+      "name": "Volée de corbeaux",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 2,
+      "desc": "R1: La Nuée de corbeaux dure 1,5 s de plus; R2: En se dispersant, la nuée pique une dernière fois : 120 % des dégâts de l'arme à tout ce qu'elle couvre, et les aveuglés sont étourdis 0,5 s.",
+      "solo": "controle"
+    },
+    {
+      "id": "sh_herd",
+      "name": "Le troupeau",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 1,
+      "desc": "Les héros à 8 m de vous partagent la moitié de la réduction de dégâts de votre Harmonie.",
+      "solo": "utilite"
+    },
+    {
+      "id": "sh_trance",
+      "name": "Transe",
+      "branch": "Ascension",
+      "tier": 9,
+      "maxRank": 3,
+      "desc": "R1: +5 % de ressource générée.; R2: +10 % de ressource générée.; R3: +15 % de ressource générée.",
+      "solo": "utilite"
+    },
+    {
+      "id": "sh_oath_wolf",
+      "name": "Serment du loup",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Chaque monstre tué sous la forme du loup vous rend 10 d'Esprit, et vos saignements mordent 50 % plus fort.",
+      "solo": "degats"
+    },
+    {
+      "id": "sh_oath_bear",
+      "name": "Serment de l’ours",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "En ours, un coup qui vous tuerait vous laisse debout : l'ours tombe, l'homme se relève et son souffle le soigne de 20 %. Une fois toutes les 60 s.",
+      "solo": "survie"
+    },
+    {
+      "id": "sh_oath_elders",
+      "name": "Serment des anciens",
+      "branch": "Ascension - Serment",
+      "tier": 10,
+      "maxRank": 1,
+      "desc": "Le souffle du Cercle des bêtes revient en 1,5 s au lieu de 3 s, et l'Harmonie III porte vos dégâts à +35 %.",
+      "solo": "degats"
+    }
+  ]
+}
