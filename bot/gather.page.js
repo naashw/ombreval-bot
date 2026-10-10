@@ -638,6 +638,7 @@
   const target = () => TARGET[profTier()] + (ad.tgtAdj[profTier()] ?? 0);
   // Pure: XP when the profession xp gained over the horizon by gathering risk-free beats what leveling costs now.
   function modePick(o) {
+    if (o.inDungeon && o.hasBot) return 'XP'; // no node inside an instance: __bot finishes or leaves the run first
     if (!o.hasBot || o.lvl >= o.target) return 'récolte';
     const gain = (o.rateSafe - o.rateNow) * HORIZON_S, cost = o.rateNow * o.tLvlS, k = o.cur === 'XP' ? 0.8 : 1.25; // hysteresis
     return gain > cost * k ? 'XP' : 'récolte';
@@ -653,7 +654,7 @@
       if (st.mode === 'récolte' && (st.modeTrips ?? 0) >= 5 && g.level >= target() && share > 0.5 && a < 6) { ad.tgtAdj[t] = a + 1; st.modeTrips = 0; }
       else if (g.level < target() && share < 0.1 && a > -4) ad.tgtAdj[t] = a - 1;
     }
-    const mode = modePick({ hasBot: !!window.__bot, lvl: g.level, target: target(), rateNow, rateSafe, tLvlS, cur: st.mode });
+    const mode = modePick({ inDungeon: !!g.dungeon, hasBot: !!window.__bot, lvl: g.level, target: target(), rateNow, rateSafe, tLvlS, cur: st.mode });
     st.modeWhy = { rateNow: +rateNow.toFixed(3), rateSafe: +rateSafe.toFixed(3), tLvlS: Math.round(tLvlS), target: target() };
     if (mode !== st.mode) setMode(mode);
     st.modeAt = now();
@@ -667,7 +668,7 @@
   // While leveling: take over for a cheap node close by when nothing is on us, then hand back.
   function coordTick() {
     if (!st.on) return;
-    if (!st.modeAt || now() - st.modeAt > MODE_EVERY || (st.mode === 'XP' && g.level >= target())) modeEval();
+    if (!st.modeAt || now() - st.modeAt > MODE_EVERY || (st.mode === 'XP' && g.level >= target() && !g.dungeon) || (g.dungeon && st.mode !== 'XP')) modeEval();
     if (st.mode !== 'XP') return;
     if (!window.__bot) { setMode('récolte'); return; }
     const t = now(), xp = cumXp(), w = st.xpW;
