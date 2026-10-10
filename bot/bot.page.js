@@ -251,22 +251,39 @@
       if (next && z === next.z) prior = Math.max(prior, best.net * 1.1);
       // Recent deaths there, as a death rate over the recent window: pushes the arm away for a while.
       const recent = ad.recentDeaths.filter(d => d.zone === z.name && t - d.t < RECENT_MS).length * dc / RECENT_MS * 3.6e6;
-      const qb = holdsQuest(z, q) ? questBonus(q, z, s) : 0;
+      const qb = holdsQuest(z, q) && !questArmSkipped(q) ? questBonus(q, z, s) : 0;
       const mean = (prior * pms + armNet(s, xg, dc) * s.ms) / (pms + s.ms) - recent + qb;
       const ok = z.dun ? z.dun.d.level <= lv && !(DUN_SKIP.get(z.dun.d.id) > Date.now()) && !expFull(z.dun.d.id)
         : z.quest ? (q.minLevel ?? 1) <= lv - 1 : z.lvl[0] <= lv;
       return { z, a, mean, qb, n: (pms + s.ms) / ZONE_DWELL, ok };
     });
   }
+  // Quest boss absent (killed by someone, respawning): its arm is skipped for the learned respawn time of that kind
+  // (prior 5 min, x2 when still absent on return, x0.75 when found), then we come back.
+  const questArmSkipped = q => !!q && st.qArmSkip?.key === questKey(q) && Date.now() < st.qArmSkip.until;
+  function bossWatch(q, me) {
+    if (!(q?.type === 'kill' && q.need === 1 && q.x != null && st.questArm && dist(me, q) < Math.max(10, (q.r ?? 25) * 0.6))) { st.bossAbsentAt = null; return; }
+    const R = ad.respawn ??= {}, key = questKey(q);
+    if ([...g.entities.visibleMonsters()].some(m => !m.dead && m.hp > 0 && m.def?.name === q.kind)) {
+      if (st.qArmSkip?.key === key) { R[q.kind] = Math.max(60000, (R[q.kind] ?? 300000) * 0.75); st.qArmSkip = null; }
+      st.bossAbsentAt = null; return;
+    }
+    st.bossAbsentAt ??= now();
+    if (now() - st.bossAbsentAt < 30000) return;
+    if (st.qArmSkip?.key === key) R[q.kind] = Math.min(3600000, (R[q.kind] ?? 300000) * 2); // came back too early
+    st.qArmSkip = { key, until: Date.now() + (R[q.kind] ?? 300000) }; st.bossAbsentAt = null; st.zonePick = null; saveAd();
+    jlog('boss absent', { kind: q.kind, min: Math.round((R[q.kind] ?? 300000) / 60000) });
+  }
   // Re-pick after the dwell, on a level up, on a quest change, or when the picked dungeon cannot be entered now.
   function pickZone() {
     const qk = st.quest ? questKey(st.quest) : null, p = st.zonePick;
-    const blocked = p?.dun && !g.dungeon && (DUN_SKIP.get(p.dun.d.id) > Date.now() || expFull(p.dun.d.id));
+    const blocked = (p?.dun && !g.dungeon && (DUN_SKIP.get(p.dun.d.id) > Date.now() || expFull(p.dun.d.id)))
+      || (st.qArmSkip && Date.now() >= st.qArmSkip.until && !st.qArmSkip.back && (st.qArmSkip.back = true)); // boss due back
     if (p && now() - st.zonePickAt < ZONE_DWELL && p.lvl[0] <= g.level && st.zonePickQ === qk && st.zonePickLvl === g.level && !blocked) return p;
     const arms = zoneArms().filter(a => a.ok);
     st.zoneArms = arms;
     // Quests first: the arm holding the active kill/collect/dungeon step wins over the ladder.
-    const qa = arms.find(a => a.qb > 0);
+    const qa = arms.find(a => a.qb > 0); // qb is 0 while the quest boss is away (bossWatch)
     st.zonePick = qa?.z ?? arms[ucbPick(arms)]?.z ?? ZONES[0]; st.zonePickAt = now(); st.zonePickQ = qk; st.zonePickLvl = g.level;
     (st.ladder ??= []).push(`${new Date().toTimeString().slice(0, 5)} niv${g.level} ${st.zonePick.name}`); if (st.ladder.length > 30) st.ladder.shift();
     jlog('bras', { arm: st.zonePick.name, arms: arms.map(a => `${a.z.name}|${a.a}|${Math.round(a.mean)}|${a.n.toFixed(1)}`) });
@@ -2141,6 +2158,7 @@
     st.top = ranked.slice(0, 3).map(o => `${o.m.def?.kind}${o.m.level} ${o.s.toFixed(2)}`);
     const tgtO = ranked[0];
     const quest = questStep();
+    bossWatch(quest, me);
     // Fight forecast for the globe value: incoming dps of attackers and the time to clear what is engaged.
     st.incoming = attackers.reduce((a, o) => a + enemyDps(o.m), 0);
     st.ttkEng = eng.reduce((a, o) => a + o.m.hp, 0) / Math.max(1, myDps() * (1 + splashShare() * Math.max(0, eng.length - 1)));
@@ -2245,8 +2263,14 @@
   }
 
   const origBuild = g.controls.build.bind(g.controls);
-  g.controls.build = aimPt => {
+  // The gathering coordinator (gather.page.js) owns the character outside its XP mode: yield even if started.
+  const gatherOwns = () => {
+    if (now() - (st.gatherAt ?? -1e9) > 500) { st.gatherAt = now(); try { const s = window.__gather?.status?.(); st.gatherOwns = !!s?.on && s.mode !== 'XP'; } catch { st.gatherOwns = false; } }
+    return st.gatherOwns;
+  };
+  const myBuild = g.controls.build = aimPt => {
     if (!st.on || g.ui.typing) return origBuild(aimPt);
+    if (gatherOwns()) { if (st.pressed.size) setKeys([]); st.last = 'cède la main au bot métiers'; return origBuild(aimPt); }
     if (g.sim.dead || g.hp <= 0) {
       setKeys([]);
       if (!st.deadSince) {
@@ -2284,7 +2308,7 @@
 
   // Count kills and keep skills usable while the real cursor sits on a UI panel.
   const origOnMessage = g.onMessage.bind(g);
-  g.onMessage = msg => {
+  const myOnMessage = g.onMessage = msg => {
     if (st.on && msg?.t === 's') for (const ev of msg.ev ?? []) {
       if (ev.e === 'kill') {
         const km = g.entities.monsters.get(ev.id)?.view;
@@ -2389,7 +2413,10 @@
       // Hot-load carry: the next instance keeps the current fight's monsters as targets for 30 s.
       window.__botCarry = { seen: [...(st.fight?.seen ?? [])], at: Date.now() };
       api.pause();
-      g.controls.build = origBuild; g.onMessage = origOnMessage;
+      // Unhook only if still on top: a wrapper added later (gather.page.js) would be dropped otherwise. Left in the chain,
+      // ours is a pass-through once paused.
+      if (g.controls.build === myBuild) g.controls.build = origBuild;
+      if (g.onMessage === myOnMessage) g.onMessage = origOnMessage;
       window.removeEventListener('keydown', onKey, true);
       clearInterval(hudTimer); hud.remove();
       delete window.__bot;
