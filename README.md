@@ -12,7 +12,19 @@ Ce qu'il fait :
 
 Classes gérées : nécromancien, chaman, faucheur.
 
-## Démarrage rapide
+## Version console (sans installation)
+
+1. Entrer en jeu avec un personnage.
+2. Ouvrir [`dist/ombreval-bot.js`](https://raw.githubusercontent.com/naashw/ombreval-bot/main/dist/ombreval-bot.js) et tout copier.
+3. Dans l'onglet du jeu, ouvrir la console (F12, onglet Console), coller, Entrée. Au premier collage, Chrome et Brave demandent de taper `allow pasting` avant.
+
+Le bot démarre aussitôt avec les panneaux F6, F10 et F11. Après un rechargement de page ou un changement de personnage, recoller le script. Pour l'arrêter : `__bot.stop()`.
+
+Pour régénérer ce fichier après une modification du bot : `node bot/build-console.mjs`.
+
+## Démarrage rapide (lanceur Node)
+
+Le lanceur réinjecte le bot tout seul après un rechargement et enregistre les combats sur le disque.
 
 Il faut Node.js (ou [Bun](https://bun.sh)) et Brave ou Chrome.
 
