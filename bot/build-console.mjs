@@ -1,4 +1,4 @@
-// Usage: node build-console.mjs
+// Usage: bun build-console.mjs
 // Bundles the bot, its per-class data files and the panels into ../dist/ombreval-bot.js,
 // a single script to paste into the DevTools console of the game tab (no Node, no debug port needed).
 import fs from 'fs';
@@ -27,6 +27,12 @@ ${optional('assist.page.js', 'assist')}
 window.__bot.start();
 `;
 
+// Written readable first, then minified in place by Bun (smaller paste); the comments above are lost.
+const file = new URL('../dist/ombreval-bot.js', import.meta.url).pathname;
 fs.mkdirSync(new URL('../dist/', import.meta.url), { recursive: true });
-fs.writeFileSync(new URL('../dist/ombreval-bot.js', import.meta.url), out);
-console.log(`dist/ombreval-bot.js : ${(out.length / 1024).toFixed(0)} Ko`);
+fs.writeFileSync(file, out);
+const res = await Bun.build({ entrypoints: [file], minify: true, target: 'browser' });
+if (!res.success) throw new AggregateError(res.logs, 'minification échouée');
+const min = await res.outputs[0].text();
+fs.writeFileSync(file, '// Ombreval bot, console build: https://github.com/naashw/ombreval-bot (paste in the game tab console, in world)\n' + min);
+console.log(`dist/ombreval-bot.js : ${(min.length / 1024).toFixed(0)} Ko`);

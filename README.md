@@ -20,7 +20,7 @@ Classes gérées : nécromancien, chaman, faucheur.
 
 Le bot démarre aussitôt avec les panneaux F6, F10 et F11. Après un rechargement de page ou un changement de personnage, recoller le script. Pour l'arrêter : `__bot.stop()`.
 
-Pour régénérer ce fichier après une modification du bot : `node bot/build-console.mjs`.
+Pour régénérer ce fichier après une modification du bot : `bun bot/build-console.mjs`.
 
 ## Démarrage rapide (lanceur Node)
 
